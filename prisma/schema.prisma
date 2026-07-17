@@ -1,0 +1,700 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  nit       String?
+  address   String?
+  phone     String?
+  email     String?
+  logoUrl   String?   @map("logo_url")
+  currency  String   @default("COP")
+  timezone  String   @default("America/Bogota")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users              User[]
+  categories         Category[]
+  paymentMethods     PaymentMethod[]
+  contacts           Contact[]
+  cashRegisters      CashRegister[]
+  bankAccounts       BankAccount[]
+  financialMovements FinancialMovement[]
+  sales              Sale[]
+  expenses           Expense[]
+  purchases          Purchase[]
+  accountsReceivable AccountsReceivable[]
+  accountsPayable    AccountsPayable[]
+  obligations        Obligation[]
+  assets             Asset[]
+  documents          Document[]
+  transfers          Transfer[]
+  importLogs         ImportLog[]
+  auditLogs          AuditLog[]
+  notifications      Notification[]
+  agreements         Agreement[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  email     String   @unique
+  name      String
+  phone     String?
+  role      String
+  avatarUrl String?  @map("avatar_url")
+  isActive  Boolean  @default(true) @map("is_active")
+  lastLogin DateTime? @map("last_login")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company              Company            @relation(fields: [companyId], references: [id])
+  cashRegisterClosures CashRegister[]     @relation("CashRegisterCloser")
+  financialMovements   FinancialMovement[]
+  sales                Sale[]
+  salePayments         SalePayment[]
+  expenses             Expense[]
+  purchases            Purchase[]
+  purchasePayments     PurchasePayment[]
+  arPayments           ArPayment[]
+  apPayments           ApPayment[]
+  obligations          Obligation[]
+  documents            Document[]
+  transfers            Transfer[]
+  importLogs           ImportLog[]
+  auditLogs            AuditLog[]
+  notifications        Notification[]
+  agreements           Agreement[]
+  agreementItems       AgreementItem[]
+  agreementSettlements AgreementSettlement[]
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  name      String
+  type      String
+  parentId  String?  @map("parent_id")
+  icon      String?
+  color     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+
+  company           Company            @relation(fields: [companyId], references: [id])
+  parent            Category?          @relation("CategoryTree", fields: [parentId], references: [id])
+  children          Category[]         @relation("CategoryTree")
+  financialMovements FinancialMovement[]
+  expenses          Expense[]
+  purchaseItems     PurchaseItem[]
+  assets            Asset[]
+}
+
+model PaymentMethod {
+  id            String   @id @default(uuid())
+  companyId     String   @map("company_id")
+  name          String
+  type          String
+  bankAccountId String?  @map("bank_account_id")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  company          Company          @relation(fields: [companyId], references: [id])
+  bankAccount      BankAccount?     @relation(fields: [bankAccountId], references: [id])
+  salePayments     SalePayment[]
+  expenses         Expense[]
+  purchasePayments PurchasePayment[]
+  arPayments       ArPayment[]
+  apPayments       ApPayment[]
+  obligations       Obligation[]
+}
+
+model Contact {
+  id             String   @id @default(uuid())
+  companyId      String   @map("company_id")
+  type           String
+  name           String
+  documentType   String?  @map("document_type")
+  documentNumber String?  @map("document_number")
+  email          String?
+  phone          String?
+  address        String?
+  contactPerson  String?  @map("contact_person")
+  notes          String?
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  company            Company            @relation(fields: [companyId], references: [id])
+  financialMovements FinancialMovement[]
+  sales              Sale[]
+  expenses           Expense[]
+  purchases          Purchase[]
+  accountsReceivable AccountsReceivable[]
+  accountsPayable    AccountsPayable[]
+  obligations        Obligation[]
+  agreements         Agreement[]
+}
+
+model CashRegister {
+  id             String    @id @default(uuid())
+  companyId      String    @map("company_id")
+  name           String    @default("Caja Principal")
+  openingBalance Float     @default(0) @map("opening_balance")
+  status         String    @default("closed")
+  openedAt       DateTime? @map("opened_at")
+  closedAt       DateTime? @map("closed_at")
+  closedById     String?   @map("closed_by_id")
+  physicalCount  Float?    @map("physical_count")
+  difference     Float?
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  company Company  @relation(fields: [companyId], references: [id])
+  closer  User?    @relation("CashRegisterCloser", fields: [closedById], references: [id])
+}
+
+model BankAccount {
+  id            String   @id @default(uuid())
+  companyId     String   @map("company_id")
+  bankName      String   @map("bank_name")
+  accountType   String?  @map("account_type")
+  accountNumber String?  @map("account_number")
+  holderName    String?  @map("holder_name")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  company        Company         @relation(fields: [companyId], references: [id])
+  paymentMethods PaymentMethod[]
+}
+
+model FinancialMovement {
+  id            String   @id @default(uuid())
+  transactionId String   @unique @map("transaction_id")
+  companyId     String   @map("company_id")
+  status        String   @default("confirmed")
+  movementType  String   @map("movement_type")
+  amount        Float
+  direction     String
+  movementDate  DateTime @map("movement_date")
+  categoryId    String?  @map("category_id")
+  subcategory   String?
+  description   String?
+  sourceType    String   @map("source_type")
+  sourceId      String   @map("source_id")
+  contactId     String?  @map("contact_id")
+  referenceType String?  @map("reference_type")
+  referenceId   String?  @map("reference_id")
+  receiptNumber String?  @map("receipt_number")
+  notes         String?
+  createdBy     String   @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  company  Company   @relation(fields: [companyId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id])
+  contact  Contact?  @relation(fields: [contactId], references: [id])
+  creator  User      @relation(fields: [createdBy], references: [id])
+
+  documents          Document[]
+  salePayments       SalePayment[]
+  expenses           Expense[]
+  purchasePayments   PurchasePayment[]
+  arPayments         ArPayment[]
+  apPayments         ApPayment[]
+  obligationPayments ObligationPayment[]
+  originTransfers    Transfer[] @relation("TransferOrigin")
+  destTransfers      Transfer[] @relation("TransferDest")
+
+  @@index([companyId, movementDate])
+  @@index([status])
+  @@index([movementType])
+}
+
+model Sale {
+  id          String   @id @default(uuid())
+  companyId   String   @map("company_id")
+  contactId   String?  @map("contact_id")
+  saleDate    DateTime @map("sale_date")
+  status      String   @default("completed")
+  paymentType String   @map("payment_type")
+  subtotal    Float
+  discount    Float    @default(0)
+  tax         Float    @default(0)
+  total       Float
+  amountPaid  Float    @default(0) @map("amount_paid")
+  balanceDue  Float    @default(0) @map("balance_due")
+  notes       String?
+  source      String   @default("manual")
+  operationsId String? @map("operations_id")
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  company            Company            @relation(fields: [companyId], references: [id])
+  contact            Contact?           @relation(fields: [contactId], references: [id])
+  creator            User               @relation(fields: [createdBy], references: [id])
+  items              SaleItem[]
+  payments           SalePayment[]
+  accountsReceivable AccountsReceivable[]
+}
+
+model SaleItem {
+  id           String  @id @default(uuid())
+  saleId       String  @map("sale_id")
+  serviceName  String  @map("service_name")
+  quantity     Int     @default(1)
+  unitPrice    Float   @map("unit_price")
+  cost         Float   @default(0)
+  subtotal     Float
+  detailerId   String? @map("detailer_id")
+  vehiclePlate String? @map("vehicle_plate")
+  vehicleInfo  String? @map("vehicle_info")
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+}
+
+model SalePayment {
+  id                  String   @id @default(uuid())
+  saleId              String   @map("sale_id")
+  amount              Float
+  paymentMethodId     String?  @map("payment_method_id")
+  paymentDate         DateTime @map("payment_date")
+  financialMovementId String?  @map("financial_movement_id")
+  reference           String?
+  notes               String?
+  createdBy           String   @map("created_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  sale              Sale              @relation(fields: [saleId], references: [id])
+  paymentMethod     PaymentMethod?    @relation(fields: [paymentMethodId], references: [id])
+  financialMovement FinancialMovement? @relation(fields: [financialMovementId], references: [id])
+  creator           User              @relation(fields: [createdBy], references: [id])
+}
+
+model Expense {
+  id                  String   @id @default(uuid())
+  companyId           String   @map("company_id")
+  categoryId          String?  @map("category_id")
+  amount              Float
+  description         String?
+  expenseDate         DateTime @map("expense_date")
+  paymentMethodId     String?  @map("payment_method_id")
+  contactId           String?  @map("contact_id")
+  receiptNumber       String?  @map("receipt_number")
+  isRecurring         Boolean  @default(false) @map("is_recurring")
+  recurringFrequency  String?  @map("recurring_frequency")
+  financialMovementId String?  @map("financial_movement_id")
+  createdBy           String   @map("created_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  company          Company          @relation(fields: [companyId], references: [id])
+  category         Category?        @relation(fields: [categoryId], references: [id])
+  contact          Contact?         @relation(fields: [contactId], references: [id])
+  paymentMethod    PaymentMethod?   @relation(fields: [paymentMethodId], references: [id])
+  financialMovement FinancialMovement? @relation(fields: [financialMovementId], references: [id])
+  creator          User             @relation(fields: [createdBy], references: [id])
+}
+
+model Purchase {
+  id           String   @id @default(uuid())
+  companyId    String   @map("company_id")
+  contactId    String?  @map("contact_id")
+  purchaseDate DateTime @map("purchase_date")
+  invoiceNumber String? @map("invoice_number")
+  purchaseType String   @map("purchase_type")
+  subtotal     Float
+  tax          Float    @default(0)
+  total        Float
+  paymentType  String   @map("payment_type")
+  amountPaid   Float    @default(0) @map("amount_paid")
+  balanceDue   Float    @default(0) @map("balance_due")
+  status       String   @default("completed")
+  notes        String?
+  createdBy    String   @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  company         Company          @relation(fields: [companyId], references: [id])
+  contact         Contact?         @relation(fields: [contactId], references: [id])
+  creator         User             @relation(fields: [createdBy], references: [id])
+  items           PurchaseItem[]
+  payments        PurchasePayment[]
+  accountsPayable AccountsPayable[]
+  assets          Asset[]
+}
+
+model PurchaseItem {
+  id         String   @id @default(uuid())
+  purchaseId String   @map("purchase_id")
+  itemName   String   @map("item_name")
+  categoryId String?  @map("category_id")
+  quantity   Float    @default(1)
+  unit       String?
+  unitPrice  Float    @map("unit_price")
+  subtotal   Float
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+}
+
+model PurchasePayment {
+  id                  String   @id @default(uuid())
+  purchaseId          String   @map("purchase_id")
+  amount              Float
+  paymentMethodId     String?  @map("payment_method_id")
+  paymentDate         DateTime @map("payment_date")
+  financialMovementId String?  @map("financial_movement_id")
+  reference           String?
+  notes               String?
+  createdBy           String   @map("created_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  purchase          Purchase          @relation(fields: [purchaseId], references: [id])
+  paymentMethod     PaymentMethod?    @relation(fields: [paymentMethodId], references: [id])
+  financialMovement FinancialMovement? @relation(fields: [financialMovementId], references: [id])
+  creator           User              @relation(fields: [createdBy], references: [id])
+}
+
+model AccountsReceivable {
+  id               String   @id @default(uuid())
+  companyId        String   @map("company_id")
+  contactId        String   @map("contact_id")
+  saleId           String?  @map("sale_id")
+  description      String
+  originalAmount   Float    @map("original_amount")
+  paidAmount       Float    @default(0) @map("paid_amount")
+  balance          Float
+  issueDate        DateTime @map("issue_date")
+  dueDate          DateTime @map("due_date")
+  status           String   @default("pending")
+  agingBucket      String?  @map("aging_bucket")
+  lastReminderDate DateTime? @map("last_reminder_date")
+  reminderCount    Int      @default(0) @map("reminder_count")
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  company  Company     @relation(fields: [companyId], references: [id])
+  contact  Contact     @relation(fields: [contactId], references: [id])
+  sale     Sale?       @relation(fields: [saleId], references: [id])
+  payments ArPayment[]
+}
+
+model ArPayment {
+  id                   String   @id @default(uuid())
+  accountsReceivableId String   @map("accounts_receivable_id")
+  amount               Float
+  paymentMethodId      String?  @map("payment_method_id")
+  paymentDate          DateTime @map("payment_date")
+  financialMovementId  String?  @map("financial_movement_id")
+  reference            String?
+  notes                String?
+  createdBy            String   @map("created_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  accountsReceivable AccountsReceivable @relation(fields: [accountsReceivableId], references: [id])
+  paymentMethod      PaymentMethod?     @relation(fields: [paymentMethodId], references: [id])
+  financialMovement  FinancialMovement?  @relation(fields: [financialMovementId], references: [id])
+  creator            User               @relation(fields: [createdBy], references: [id])
+}
+
+model AccountsPayable {
+  id             String   @id @default(uuid())
+  companyId      String   @map("company_id")
+  contactId      String?  @map("contact_id")
+  purchaseId     String?  @map("purchase_id")
+  description    String
+  originalAmount Float    @map("original_amount")
+  paidAmount     Float    @default(0) @map("paid_amount")
+  balance        Float
+  issueDate      DateTime @map("issue_date")
+  dueDate        DateTime @map("due_date")
+  status         String   @default("pending")
+  agingBucket    String?  @map("aging_bucket")
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  company  Company    @relation(fields: [companyId], references: [id])
+  contact  Contact?   @relation(fields: [contactId], references: [id])
+  purchase Purchase?  @relation(fields: [purchaseId], references: [id])
+  payments ApPayment[]
+}
+
+model ApPayment {
+  id                  String   @id @default(uuid())
+  accountsPayableId   String   @map("accounts_payable_id")
+  amount              Float
+  paymentMethodId     String?  @map("payment_method_id")
+  paymentDate         DateTime @map("payment_date")
+  financialMovementId String?  @map("financial_movement_id")
+  reference           String?
+  notes               String?
+  createdBy           String   @map("created_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  accountsPayable   AccountsPayable   @relation(fields: [accountsPayableId], references: [id])
+  paymentMethod     PaymentMethod?    @relation(fields: [paymentMethodId], references: [id])
+  financialMovement FinancialMovement? @relation(fields: [financialMovementId], references: [id])
+  creator           User              @relation(fields: [createdBy], references: [id])
+}
+
+model Obligation {
+  id               String   @id @default(uuid())
+  companyId        String   @map("company_id")
+  type             String
+  contactId        String?  @map("contact_id")
+  name             String
+  originalAmount   Float    @map("original_amount")
+  paidAmount       Float    @default(0) @map("paid_amount")
+  balance          Float
+  interestRate     Float    @default(0) @map("interest_rate")
+  interestType     String   @default("none") @map("interest_type")
+  startDate        DateTime @map("start_date")
+  endDate          DateTime? @map("end_date")
+  paymentFrequency String?  @map("payment_frequency")
+  paymentAmount    Float?   @map("payment_amount")
+  paymentMethodId  String?  @map("payment_method_id")
+  priority         String   @default("normal")
+  status           String   @default("active")
+  isRecurring      Boolean  @default(false) @map("is_recurring")
+  nextDueDate      DateTime? @map("next_due_date")
+  notes            String?
+  createdBy        String   @map("created_by")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  company       Company         @relation(fields: [companyId], references: [id])
+  contact       Contact?        @relation(fields: [contactId], references: [id])
+  creator       User            @relation(fields: [createdBy], references: [id])
+  paymentMethod PaymentMethod?  @relation(fields: [paymentMethodId], references: [id])
+  payments      ObligationPayment[]
+}
+
+model ObligationPayment {
+  id                  String   @id @default(uuid())
+  obligationId        String   @map("obligation_id")
+  installmentNumber   Int?     @map("installment_number")
+  dueDate             DateTime @map("due_date")
+  amountDue           Float    @map("amount_due")
+  interestPortion     Float    @default(0) @map("interest_portion")
+  principalPortion    Float    @default(0) @map("principal_portion")
+  amountPaid          Float    @default(0) @map("amount_paid")
+  paymentDate         DateTime? @map("payment_date")
+  status              String   @default("pending")
+  financialMovementId String?  @map("financial_movement_id")
+  notes               String?
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  obligation       Obligation        @relation(fields: [obligationId], references: [id])
+  financialMovement FinancialMovement? @relation(fields: [financialMovementId], references: [id])
+}
+
+model Asset {
+  id                     String   @id @default(uuid())
+  companyId              String   @map("company_id")
+  name                   String
+  categoryId             String?  @map("category_id")
+  assetType              String   @map("asset_type")
+  purchaseDate           DateTime @map("purchase_date")
+  purchasePrice          Float    @map("purchase_price")
+  salvageValue           Float    @default(0) @map("salvage_value")
+  usefulLifeMonths       Int      @map("useful_life_months")
+  depreciationMethod     String   @default("straight_line") @map("depreciation_method")
+  accumulatedDepreciation Float   @default(0) @map("accumulated_depreciation")
+  netBookValue           Float    @map("net_book_value")
+  status                 String   @default("active")
+  serialNumber           String?  @map("serial_number")
+  location               String?
+  purchaseId             String?  @map("purchase_id")
+  notes                  String?
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  company              Company              @relation(fields: [companyId], references: [id])
+  category             Category?            @relation(fields: [categoryId], references: [id])
+  purchase             Purchase?            @relation(fields: [purchaseId], references: [id])
+  depreciationEntries  DepreciationEntry[]
+}
+
+model DepreciationEntry {
+  id          String   @id @default(uuid())
+  assetId     String   @map("asset_id")
+  period      DateTime
+  amount      Float
+  accumulated Float
+  netValue    Float    @map("net_value")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  asset Asset @relation(fields: [assetId], references: [id])
+}
+
+model Document {
+  id                  String   @id @default(uuid())
+  companyId           String   @map("company_id")
+  name                String
+  documentType        String   @map("document_type")
+  fileUrl             String   @map("file_url")
+  fileSize            Int?     @map("file_size")
+  fileType            String?  @map("file_type")
+  referenceType       String?  @map("reference_type")
+  referenceId         String?  @map("reference_id")
+  financialMovementId String?  @map("financial_movement_id")
+  uploadedBy          String   @map("uploaded_by")
+  tags                String?  @default("[]")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  company           Company           @relation(fields: [companyId], references: [id])
+  uploader          User              @relation(fields: [uploadedBy], references: [id])
+  financialMovement FinancialMovement? @relation(fields: [financialMovementId], references: [id])
+
+  @@index([referenceType, referenceId])
+  @@index([financialMovementId])
+}
+
+model Transfer {
+  id                        String   @id @default(uuid())
+  companyId                 String   @map("company_id")
+  fromType                  String   @map("from_type")
+  fromId                    String   @map("from_id")
+  toType                    String   @map("to_type")
+  toId                      String   @map("to_id")
+  amount                    Float
+  description               String?
+  transferDate              DateTime @map("transfer_date")
+  financialMovementOriginId String?  @map("financial_movement_origin_id")
+  financialMovementDestId   String?  @map("financial_movement_dest_id")
+  createdBy                 String   @map("created_by")
+  createdAt                 DateTime @default(now()) @map("created_at")
+
+  company        Company          @relation(fields: [companyId], references: [id])
+  originMovement FinancialMovement? @relation("TransferOrigin", fields: [financialMovementOriginId], references: [id])
+  destMovement   FinancialMovement? @relation("TransferDest", fields: [financialMovementDestId], references: [id])
+  creator        User             @relation(fields: [createdBy], references: [id])
+}
+
+model ImportLog {
+  id              String   @id @default(uuid())
+  companyId       String   @map("company_id")
+  source          String
+  fileName        String?  @map("file_name")
+  recordsImported Int      @default(0) @map("records_imported")
+  recordsFailed   Int      @default(0) @map("records_failed")
+  status          String   @default("processing")
+  errorLog        String?  @map("error_log")
+  importedBy      String   @map("imported_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  company  Company @relation(fields: [companyId], references: [id])
+  importer User    @relation(fields: [importedBy], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  companyId  String   @map("company_id")
+  userId     String?  @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  oldValues  String?  @map("old_values")
+  newValues  String?  @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  companyId     String   @map("company_id")
+  type          String
+  title         String
+  message       String?
+  referenceType String?  @map("reference_type")
+  referenceId   String?  @map("reference_id")
+  isRead        Boolean  @default(false) @map("is_read")
+  priority      String   @default("normal")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+}
+
+model Agreement {
+  id                    String   @id @default(uuid())
+  companyId             String   @map("company_id")
+  contactId             String   @map("contact_id")
+  title                 String
+  description           String?
+  contractorName        String   @map("contractor_name")
+  contractorIdNumber    String?  @map("contractor_id_number")
+  serviceTypes          String   @default("[\"pintura\",\"latoneria\"]")
+  paintSplitAurum       Float    @default(40) @map("paint_split_aurum")
+  paintSplitContractor  Float    @default(60) @map("paint_split_contractor")
+  bodyworkSplitAurum    Float    @default(25) @map("bodywork_split_aurum")
+  status                String   @default("active")
+  startDate             DateTime @map("start_date")
+  endDate               DateTime? @map("end_date")
+  terminationNoticeDays Int?     @map("termination_notice_days")
+  workSchedule          String?  @map("work_schedule")
+  paymentTerms          String?  @map("payment_terms")
+  notes                 String?
+  createdBy             String   @map("created_by")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  company    Company              @relation(fields: [companyId], references: [id])
+  contact    Contact              @relation(fields: [contactId], references: [id])
+  creator    User                 @relation(fields: [createdBy], references: [id])
+  items      AgreementItem[]
+  settlements AgreementSettlement[]
+}
+
+model AgreementItem {
+  id                  String   @id @default(uuid())
+  agreementId         String   @map("agreement_id")
+  vehiclePlate        String   @map("vehicle_plate")
+  vehicleInfo         String?  @map("vehicle_info")
+  serviceType         String
+  serviceDescription  String?  @map("service_description")
+  totalValue          Float    @map("total_value")
+  splitAurum          Float    @map("split_aurum")
+  splitContractor     Float    @map("split_contractor")
+  status              String   @default("pending")
+  thirdPartyNeeded    Boolean  @default(false) @map("third_party_needed")
+  thirdPartyCost      Float?   @map("third_party_cost")
+  clientPaid          Boolean  @default(false) @map("client_paid")
+  vehicleDelivered    Boolean  @default(false) @map("vehicle_delivered")
+  invoicedDate        DateTime? @map("invoiced_date")
+  paidDate            DateTime? @map("paid_date")
+  notes               String?
+  createdBy           String   @map("created_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  agreement  Agreement              @relation(fields: [agreementId], references: [id])
+  creator    User                   @relation(fields: [createdBy], references: [id])
+  settlements AgreementSettlement[]
+}
+
+model AgreementSettlement {
+  id                  String   @id @default(uuid())
+  agreementId         String   @map("agreement_id")
+  agreementItemId     String?  @map("agreement_item_id")
+  settlementDate      DateTime @map("settlement_date")
+  amount              Float
+  direction           String
+  paymentMethod       String?  @map("payment_method")
+  reference           String?
+  notes               String?
+  financialMovementId String?  @map("financial_movement_id")
+  createdBy           String   @map("created_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  agreement         Agreement          @relation(fields: [agreementId], references: [id])
+  agreementItem     AgreementItem?     @relation(fields: [agreementItemId], references: [id])
+  creator           User               @relation(fields: [createdBy], references: [id])
+}
