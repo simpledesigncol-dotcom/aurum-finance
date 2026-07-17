@@ -671,7 +671,16 @@ export default function ObligationsPage() {
                 <div className="relative">
                   <select
                     value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value })}
+                    onChange={(e) => {
+                      const newType = e.target.value
+                      const isGastoFijo = OBLIGATION_TYPES.find(t => t.id === newType)?.category === 'Gastos Fijos'
+                      setForm({
+                        ...form,
+                        type: newType,
+                        isRecurring: isGastoFijo ? true : form.isRecurring,
+                        paymentFrequency: isGastoFijo && !form.paymentFrequency ? 'monthly' : form.paymentFrequency,
+                      })
+                    }}
                     className={`${inputClass} appearance-none pr-8`}
                   >
                     {OBLIGATION_CATEGORIES.map((cat) => (
@@ -691,158 +700,179 @@ export default function ObligationsPage() {
                 </div>
               </div>
 
-              <div>
-                <label className={`${labelClass} block mb-1.5`}>Monto original *</label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  step="any"
-                  value={form.originalAmount}
-                  onChange={(e) => setForm({ ...form, originalAmount: e.target.value })}
-                  className={inputClass}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <label className={`${labelClass} block mb-1.5`}>Proveedor / Beneficiario</label>
-                <input
-                  type="text"
-                  value={form.contactName}
-                  onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-                  className={inputClass}
-                  placeholder="Nombre del contacto"
-                />
-              </div>
+              {(() => {
+                const selectedType = OBLIGATION_TYPES.find(t => t.id === form.type)
+                const isGastoFijo = selectedType?.category === 'Gastos Fijos' || selectedType?.category === 'Servicios Digitales'
 
-              <div>
-                <label className={`${labelClass} block mb-1.5`}>Fecha inicio *</label>
-                <input
-                  type="date"
-                  required
-                  value={form.startDate}
-                  onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={`${labelClass} block mb-1.5`}>Fecha fin</label>
-                <input
-                  type="date"
-                  value={form.endDate}
-                  onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                  className={inputClass}
-                />
-              </div>
+                return (
+                  <>
+                    <div>
+                      <label className={`${labelClass} block mb-1.5`}>{isGastoFijo ? 'Monto mensual *' : 'Monto total *'}</label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        step="any"
+                        value={form.originalAmount}
+                        onChange={(e) => setForm({ ...form, originalAmount: e.target.value })}
+                        className={inputClass}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className={`${labelClass} block mb-1.5`}>Proveedor / Beneficiario</label>
+                      <input
+                        type="text"
+                        value={form.contactName}
+                        onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+                        className={inputClass}
+                        placeholder="Nombre del contacto"
+                      />
+                    </div>
 
-              <div>
-                <label className={`${labelClass} block mb-1.5`}>Frecuencia</label>
-                <div className="relative">
-                  <select
-                    value={form.paymentFrequency}
-                    onChange={(e) => setForm({ ...form, paymentFrequency: e.target.value })}
-                    className={`${inputClass} appearance-none pr-8`}
-                  >
-                    {OBLIGATION_FREQUENCIES.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className={`${labelClass} block mb-1.5`}>Cuota</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={form.paymentAmount}
-                  onChange={(e) => setForm({ ...form, paymentAmount: e.target.value })}
-                  className={inputClass}
-                  placeholder="0"
-                />
-              </div>
+                    <div>
+                      <label className={`${labelClass} block mb-1.5`}>Fecha inicio *</label>
+                      <input
+                        type="date"
+                        required
+                        value={form.startDate}
+                        onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                        className={inputClass}
+                      />
+                    </div>
+                    {!isGastoFijo && (
+                      <div>
+                        <label className={`${labelClass} block mb-1.5`}>Fecha fin</label>
+                        <input
+                          type="date"
+                          value={form.endDate}
+                          onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
+                    )}
 
-              <div>
-                <label className={`${labelClass} block mb-1.5`}>Método de pago</label>
-                <div className="relative">
-                  <select
-                    value={form.paymentMethodId}
-                    onChange={(e) => setForm({ ...form, paymentMethodId: e.target.value })}
-                    className={`${inputClass} appearance-none pr-8`}
-                  >
-                    <option value="">Sin método</option>
-                    {paymentMethods.map((pm) => (
-                      <option key={pm.id} value={pm.id}>
-                        {pm.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className={`${labelClass} block mb-1.5`}>Prioridad</label>
-                <div className="relative">
-                  <select
-                    value={form.priority}
-                    onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                    className={`${inputClass} appearance-none pr-8`}
-                  >
-                    {OBLIGATION_PRIORITIES.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                  />
-                </div>
-              </div>
+                    <div>
+                      <label className={`${labelClass} block mb-1.5`}>Frecuencia</label>
+                      <div className="relative">
+                        <select
+                          value={form.paymentFrequency}
+                          onChange={(e) => setForm({ ...form, paymentFrequency: e.target.value })}
+                          className={`${inputClass} appearance-none pr-8`}
+                        >
+                          {OBLIGATION_FREQUENCIES.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.label}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown
+                          size={14}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                        />
+                      </div>
+                    </div>
+                    {!isGastoFijo && (
+                      <div>
+                        <label className={`${labelClass} block mb-1.5`}>Cuota por pago</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={form.paymentAmount}
+                          onChange={(e) => setForm({ ...form, paymentAmount: e.target.value })}
+                          className={inputClass}
+                          placeholder="0"
+                        />
+                      </div>
+                    )}
 
-              <div>
-                <label className={`${labelClass} block mb-1.5`}>Tasa interés %</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={form.interestRate}
-                  onChange={(e) => setForm({ ...form, interestRate: e.target.value })}
-                  className={inputClass}
-                  placeholder="0"
-                />
-              </div>
-              <div className="flex items-end pb-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.isRecurring}
-                    onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })}
-                    className="w-4 h-4 rounded border-border text-blue focus:ring-blue/20"
-                  />
-                  <span className="text-sm">Recurrente</span>
-                </label>
-              </div>
+                    <div>
+                      <label className={`${labelClass} block mb-1.5`}>Método de pago</label>
+                      <div className="relative">
+                        <select
+                          value={form.paymentMethodId}
+                          onChange={(e) => setForm({ ...form, paymentMethodId: e.target.value })}
+                          className={`${inputClass} appearance-none pr-8`}
+                        >
+                          <option value="">Sin método</option>
+                          {paymentMethods.map((pm) => (
+                            <option key={pm.id} value={pm.id}>
+                              {pm.name}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown
+                          size={14}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`${labelClass} block mb-1.5`}>Prioridad</label>
+                      <div className="relative">
+                        <select
+                          value={form.priority}
+                          onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                          className={`${inputClass} appearance-none pr-8`}
+                        >
+                          {OBLIGATION_PRIORITIES.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.label}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown
+                          size={14}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                        />
+                      </div>
+                    </div>
 
-              <div className="col-span-2">
-                <label className={`${labelClass} block mb-1.5`}>Notas</label>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className={`${inputClass} min-h-[72px] resize-none`}
-                  placeholder="Notas adicionales..."
-                />
-              </div>
+                    {!isGastoFijo && (
+                      <div>
+                        <label className={`${labelClass} block mb-1.5`}>Tasa interés %</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={form.interestRate}
+                          onChange={(e) => setForm({ ...form, interestRate: e.target.value })}
+                          className={inputClass}
+                          placeholder="0"
+                        />
+                      </div>
+                    )}
+
+                    <div className="col-span-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={form.isRecurring}
+                          onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })}
+                          className="w-4 h-4 rounded border-border text-blue focus:ring-blue/20"
+                        />
+                        <span className={`${labelClass}`}>Pago recurrente</span>
+                      </label>
+                      <p className="text-[11px] text-muted-foreground mt-1 ml-6">
+                        {isGastoFijo
+                          ? 'Este tipo de gasto se marca como recurrente automáticamente'
+                          : 'Activa si se paga periódicamente (no es deuda única)'}
+                      </p>
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className={`${labelClass} block mb-1.5`}>Notas</label>
+                      <textarea
+                        value={form.notes || ''}
+                        onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                        className={`${inputClass} min-h-[64px] resize-none`}
+                        placeholder="Notas adicionales..."
+                      />
+                    </div>
+                  </>
+                )
+              })()}
             </div>
 
             {formError && (
