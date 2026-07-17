@@ -9,7 +9,4 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-[[redirects]]
-  from = "/api/:path*"
-  to = "/.netlify/functions/nextjs/:path*"
-  status = 200
+
