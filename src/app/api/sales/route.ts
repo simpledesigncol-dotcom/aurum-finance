@@ -1,7 +1,13 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { generateTransactionId } from '@/lib/transactions'
 
 export const dynamic = 'force-dynamic'
+
+async function getDefaultRegisterId(): Promise<string> {
+  const register = await prisma.cashRegister.findFirst({ select: { id: true } })
+  return register?.id || 'default'
+}
 
 export async function GET() {
   try {
@@ -35,7 +41,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { saleDate, items, paymentType, contactId, discount, tax, notes } = body
+    const { saleDate, items, paymentType, contactId, discount, tax, notes, paymentMethodId } = body
 
     if (!saleDate || !items || items.length === 0 || !paymentType) {
       return NextResponse.json(
@@ -51,7 +57,9 @@ export async function POST(request: Request) {
     )
 
     const total = subtotal - (discount || 0) + (tax || 0)
-    const balanceDue = total
+    const isPaid = paymentType === 'cash' || paymentType === 'transfer'
+    const amountPaid = isPaid ? total : 0
+    const balanceDue = total - amountPaid
 
     const sale = await prisma.sale.create({
       data: {
@@ -64,6 +72,7 @@ export async function POST(request: Request) {
         discount: discount || 0,
         tax: tax || 0,
         total,
+        amountPaid,
         balanceDue,
         notes: notes || null,
         items: {
@@ -81,6 +90,41 @@ export async function POST(request: Request) {
         payments: true,
       },
     })
+
+    if (isPaid) {
+      const transactionId = await generateTransactionId()
+      const registerId = await getDefaultRegisterId()
+
+      const movement = await prisma.financialMovement.create({
+        data: {
+          transactionId,
+          companyId: 'default',
+          status: 'confirmed',
+          movementType: 'sale',
+          amount: total,
+          direction: 'in',
+          movementDate: new Date(saleDate),
+          description: `Venta #${sale.id.slice(0, 8)}`,
+          sourceType: 'cash_register',
+          sourceId: registerId,
+          contactId: contactId || null,
+          referenceType: 'sale',
+          referenceId: sale.id,
+          createdBy: 'default-user',
+        },
+      })
+
+      await prisma.salePayment.create({
+        data: {
+          saleId: sale.id,
+          amount: total,
+          paymentMethodId: paymentMethodId || null,
+          paymentDate: new Date(saleDate),
+          financialMovementId: movement.id,
+          createdBy: 'default-user',
+        },
+      })
+    }
 
     return NextResponse.json(sale, { status: 201 })
   } catch (error) {

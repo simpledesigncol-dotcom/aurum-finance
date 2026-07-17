@@ -62,7 +62,7 @@ export default async function CashPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Caja</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Estado actual y movimientos del dia</p>
         </div>
-        <MovementButton />
+        <MovementButton registerId={data.register?.id} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

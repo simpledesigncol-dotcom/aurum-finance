@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import MovementForm from './movement-form'
 
-export default function MovementButton() {
+export default function MovementButton({ registerId }: { registerId?: string }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -17,7 +17,7 @@ export default function MovementButton() {
         Registrar movimiento
       </button>
 
-      {open && <MovementForm onClose={() => setOpen(false)} />}
+      {open && <MovementForm registerId={registerId} onClose={() => setOpen(false)} />}
     </>
   )
 }

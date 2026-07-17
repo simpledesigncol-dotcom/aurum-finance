@@ -1,7 +1,13 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { generateTransactionId } from '@/lib/transactions'
 
 export const dynamic = 'force-dynamic'
+
+async function getDefaultRegisterId(): Promise<string> {
+  const register = await prisma.cashRegister.findFirst({ select: { id: true } })
+  return register?.id || 'default'
+}
 
 export async function GET(request: Request) {
   try {
@@ -60,6 +66,34 @@ export async function POST(request: Request) {
         contact: true,
         paymentMethod: true,
       },
+    })
+
+    const transactionId = await generateTransactionId()
+    const registerId = await getDefaultRegisterId()
+
+    const movement = await prisma.financialMovement.create({
+      data: {
+        transactionId,
+        companyId: 'default',
+        status: 'confirmed',
+        movementType: 'expense',
+        amount,
+        direction: 'out',
+        movementDate: new Date(expenseDate),
+        description: description || `Gasto`,
+        categoryId: categoryId || null,
+        sourceType: 'cash_register',
+        sourceId: registerId,
+        contactId: contactId || null,
+        referenceType: 'expense',
+        referenceId: expense.id,
+        createdBy: 'default-user',
+      },
+    })
+
+    await prisma.expense.update({
+      where: { id: expense.id },
+      data: { financialMovementId: movement.id },
     })
 
     return NextResponse.json(expense, { status: 201 })

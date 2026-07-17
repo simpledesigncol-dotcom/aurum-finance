@@ -20,9 +20,10 @@ interface FormData {
 
 interface MovementFormProps {
   onClose?: () => void
+  registerId?: string
 }
 
-export default function MovementForm({ onClose }: MovementFormProps) {
+export default function MovementForm({ onClose, registerId }: MovementFormProps) {
   const [step, setStep] = useState<'pick' | 'form'>('pick')
   const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -89,7 +90,7 @@ export default function MovementForm({ onClose }: MovementFormProps) {
             movementDate: form.movementDate,
             description: form.description || getEventLabel(),
             sourceType: 'cash_register',
-            sourceId: 'default',
+            sourceId: registerId || 'default',
             createdBy: 'default-user',
             companyId: 'default',
             status: form.status,

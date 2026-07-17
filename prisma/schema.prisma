@@ -144,7 +144,7 @@ model CashRegister {
   companyId      String    @map("company_id")
   name           String    @default("Caja Principal")
   openingBalance Float     @default(0) @map("opening_balance")
-  status         String    @default("closed")
+  status         String    @default("open")
   openedAt       DateTime? @map("opened_at")
   closedAt       DateTime? @map("closed_at")
   closedById     String?   @map("closed_by_id")

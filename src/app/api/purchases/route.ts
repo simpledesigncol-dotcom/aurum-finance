@@ -1,7 +1,13 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { generateTransactionId } from '@/lib/transactions'
 
 export const dynamic = 'force-dynamic'
+
+async function getDefaultRegisterId(): Promise<string> {
+  const register = await prisma.cashRegister.findFirst({ select: { id: true } })
+  return register?.id || 'default'
+}
 
 export async function GET() {
   try {
@@ -47,7 +53,9 @@ export async function POST(request: Request) {
     )
 
     const total = subtotal + (tax || 0)
-    const balanceDue = total
+    const isPaid = paymentType === 'cash' || paymentType === 'transfer'
+    const amountPaid = isPaid ? total : 0
+    const balanceDue = total - amountPaid
 
     const purchase = await prisma.purchase.create({
       data: {
@@ -60,6 +68,7 @@ export async function POST(request: Request) {
         subtotal,
         tax: tax || 0,
         total,
+        amountPaid,
         balanceDue,
         notes: notes || null,
         items: {
@@ -77,6 +86,40 @@ export async function POST(request: Request) {
         payments: true,
       },
     })
+
+    if (isPaid) {
+      const transactionId = await generateTransactionId()
+      const registerId = await getDefaultRegisterId()
+
+      const movement = await prisma.financialMovement.create({
+        data: {
+          transactionId,
+          companyId: 'default',
+          status: 'confirmed',
+          movementType: 'purchase',
+          amount: total,
+          direction: 'out',
+          movementDate: new Date(purchaseDate),
+          description: `Compra #${purchase.id.slice(0, 8)}`,
+          sourceType: 'cash_register',
+          sourceId: registerId,
+          contactId: contactId || null,
+          referenceType: 'purchase',
+          referenceId: purchase.id,
+          createdBy: 'default-user',
+        },
+      })
+
+      await prisma.purchasePayment.create({
+        data: {
+          purchaseId: purchase.id,
+          amount: total,
+          paymentDate: new Date(purchaseDate),
+          financialMovementId: movement.id,
+          createdBy: 'default-user',
+        },
+      })
+    }
 
     return NextResponse.json(purchase, { status: 201 })
   } catch (error) {

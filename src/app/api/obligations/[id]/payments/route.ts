@@ -4,6 +4,11 @@ import { generateTransactionId } from '@/lib/transactions'
 
 export const dynamic = 'force-dynamic'
 
+async function getDefaultRegisterId(): Promise<string> {
+  const register = await prisma.cashRegister.findFirst({ select: { id: true } })
+  return register?.id || 'default'
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -67,6 +72,7 @@ export async function POST(
 
     const transactionId = await generateTransactionId()
     const payDate = paymentDate ? new Date(paymentDate) : new Date()
+    const registerId = sourceId || (sourceType === 'cash_register' ? await getDefaultRegisterId() : sourceId)
 
     const movement = await prisma.financialMovement.create({
       data: {
@@ -77,7 +83,7 @@ export async function POST(
         direction: 'out',
         movementDate: payDate,
         sourceType: sourceType || 'cash_register',
-        sourceId: sourceId || 'default',
+        sourceId: registerId || await getDefaultRegisterId(),
         contactId: obligation.contactId,
         description: `Pago: ${obligation.name}`,
         notes: notes || null,
