@@ -37,7 +37,7 @@ export default function TreasuryPage() {
         const [banksRes, cashRes, movementsRes] = await Promise.all([
           fetch('/api/bank-accounts'),
           fetch('/api/movements?sourceType=cash_register&limit=9999'),
-          fetch('/api/movements?limit=20'),
+          fetch('/api/movements?limit=50'),
         ])
 
         const banksData = await banksRes.json()
@@ -46,12 +46,12 @@ export default function TreasuryPage() {
 
         setBankAccounts(banksData)
 
-        const cashMovements = cashData.movements || cashData
+        const cashMovements = (cashData.movements || cashData).filter((m: Movement) => m.status === 'confirmed')
         const cashIn = cashMovements
-          .filter((m: Movement) => m.direction === 'incoming' && m.status === 'confirmed')
+          .filter((m: Movement) => m.direction === 'in')
           .reduce((sum: number, m: Movement) => sum + m.amount, 0)
         const cashOut = cashMovements
-          .filter((m: Movement) => m.direction === 'outgoing' && m.status === 'confirmed')
+          .filter((m: Movement) => m.direction === 'out')
           .reduce((sum: number, m: Movement) => sum + m.amount, 0)
         setCashBalance(cashIn - cashOut)
 
@@ -75,10 +75,10 @@ export default function TreasuryPage() {
     return d >= monthStart && m.status === 'confirmed'
   })
   const monthIncome = monthMovements
-    .filter((m) => m.direction === 'incoming')
+    .filter((m) => m.direction === 'in')
     .reduce((sum, m) => sum + m.amount, 0)
   const monthExpenses = monthMovements
-    .filter((m) => m.direction === 'outgoing')
+    .filter((m) => m.direction === 'out')
     .reduce((sum, m) => sum + m.amount, 0)
 
   const movementTypeLabel = (t: string) => {
@@ -201,11 +201,11 @@ export default function TreasuryPage() {
             movements.map((m) => (
               <div key={m.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors duration-150">
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                  m.direction === 'incoming'
+                  m.direction === 'in'
                     ? 'bg-success/[0.08] text-success'
                     : 'bg-danger/[0.08] text-danger'
                 }`}>
-                  {m.direction === 'incoming' ? <ArrowDownLeft size={14} strokeWidth={1.8} /> : <ArrowUpRight size={14} strokeWidth={1.8} />}
+                  {m.direction === 'in' ? <ArrowDownLeft size={14} strokeWidth={1.8} /> : <ArrowUpRight size={14} strokeWidth={1.8} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
@@ -219,9 +219,9 @@ export default function TreasuryPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className={`text-sm font-semibold tabular-nums ${
-                    m.direction === 'incoming' ? 'text-success' : 'text-danger'
+                    m.direction === 'in' ? 'text-success' : 'text-danger'
                   }`}>
-                    {m.direction === 'incoming' ? '+' : '-'}{formatCurrency(m.amount)}
+                    {m.direction === 'in' ? '+' : '-'}{formatCurrency(m.amount)}
                   </p>
                   <p className="text-xs text-muted-foreground">{formatDate(m.movementDate)}</p>
                 </div>
