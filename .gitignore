@@ -47,4 +47,5 @@ next-env.d.ts
 # temporary migration files
 push-schema.js
 prisma/migration.sql
-prisma/dev.db
+dev.db
+dev.log
