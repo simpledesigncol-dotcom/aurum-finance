@@ -15,12 +15,6 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({
-            request,
-          })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -36,6 +30,10 @@ export async function updateSession(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname === '/login'
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
 
+  if (isApiRoute && !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
@@ -46,10 +44,6 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
-  }
-
-  if (isApiRoute && !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   return supabaseResponse
