@@ -1,0 +1,15 @@
+[build]
+  command = "npx prisma generate && npx next build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NEXT_EXPERIMENTAL_COMPILE_CACHE = "1"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+  from = "/api/:path*"
+  to = "/.netlify/functions/nextjs/:path*"
+  status = 200
