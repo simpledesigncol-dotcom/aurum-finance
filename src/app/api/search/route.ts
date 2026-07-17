@@ -29,10 +29,10 @@ export async function GET(request: Request) {
     prisma.financialMovement.findMany({
       where: {
         OR: [
-          { description: { contains: query } },
-          { transactionId: { contains: query } },
-          { notes: { contains: query } },
-          { receiptNumber: { contains: query } },
+          { description: { contains: query, mode: 'insensitive' as const } },
+          { transactionId: { contains: query, mode: 'insensitive' as const } },
+          { notes: { contains: query, mode: 'insensitive' as const } },
+          { receiptNumber: { contains: query, mode: 'insensitive' as const } },
         ],
       },
       take: 10,
@@ -42,8 +42,8 @@ export async function GET(request: Request) {
     prisma.sale.findMany({
       where: {
         OR: [
-          { notes: { contains: query } },
-          { contact: { name: { contains: query } } },
+          { notes: { contains: query, mode: 'insensitive' as const } },
+          { contact: { name: { contains: query, mode: 'insensitive' as const } } },
         ],
       },
       take: 5,
@@ -54,8 +54,8 @@ export async function GET(request: Request) {
     prisma.expense.findMany({
       where: {
         OR: [
-          { description: { contains: query } },
-          { receiptNumber: { contains: query } },
+          { description: { contains: query, mode: 'insensitive' as const } },
+          { receiptNumber: { contains: query, mode: 'insensitive' as const } },
         ],
       },
       take: 5,
@@ -65,9 +65,9 @@ export async function GET(request: Request) {
     prisma.purchase.findMany({
       where: {
         OR: [
-          { invoiceNumber: { contains: query } },
-          { notes: { contains: query } },
-          { contact: { name: { contains: query } } },
+          { invoiceNumber: { contains: query, mode: 'insensitive' as const } },
+          { notes: { contains: query, mode: 'insensitive' as const } },
+          { contact: { name: { contains: query, mode: 'insensitive' as const } } },
         ],
       },
       take: 5,
@@ -78,10 +78,10 @@ export async function GET(request: Request) {
     prisma.contact.findMany({
       where: {
         OR: [
-          { name: { contains: query } },
-          { email: { contains: query } },
-          { documentNumber: { contains: query } },
-          { phone: { contains: query } },
+          { name: { contains: query, mode: 'insensitive' as const } },
+          { email: { contains: query, mode: 'insensitive' as const } },
+          { documentNumber: { contains: query, mode: 'insensitive' as const } },
+          { phone: { contains: query, mode: 'insensitive' as const } },
         ],
       },
       take: 5,
@@ -90,9 +90,9 @@ export async function GET(request: Request) {
     prisma.obligation.findMany({
       where: {
         OR: [
-          { name: { contains: query } },
-          { notes: { contains: query } },
-          { contact: { name: { contains: query } } },
+          { name: { contains: query, mode: 'insensitive' as const } },
+          { notes: { contains: query, mode: 'insensitive' as const } },
+          { contact: { name: { contains: query, mode: 'insensitive' as const } } },
         ],
       },
       take: 5,
@@ -103,8 +103,8 @@ export async function GET(request: Request) {
     prisma.accountsReceivable.findMany({
       where: {
         OR: [
-          { description: { contains: query } },
-          { contact: { name: { contains: query } } },
+          { description: { contains: query, mode: 'insensitive' as const } },
+          { contact: { name: { contains: query, mode: 'insensitive' as const } } },
         ],
       },
       take: 5,
@@ -115,8 +115,8 @@ export async function GET(request: Request) {
     prisma.accountsPayable.findMany({
       where: {
         OR: [
-          { description: { contains: query } },
-          { contact: { name: { contains: query } } },
+          { description: { contains: query, mode: 'insensitive' as const } },
+          { contact: { name: { contains: query, mode: 'insensitive' as const } } },
         ],
       },
       take: 5,
@@ -127,8 +127,8 @@ export async function GET(request: Request) {
     prisma.document.findMany({
       where: {
         OR: [
-          { name: { contains: query } },
-          { tags: { contains: query } },
+          { name: { contains: query, mode: 'insensitive' as const } },
+          { tags: { contains: query, mode: 'insensitive' as const } },
         ],
       },
       take: 5,

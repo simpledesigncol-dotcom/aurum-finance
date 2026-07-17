@@ -60,7 +60,7 @@ export async function POST(
         companyId: ap.companyId,
         movementType: 'expense',
         amount,
-        direction: 'outgoing',
+        direction: 'out',
         movementDate: paymentDate ? new Date(paymentDate) : new Date(),
         sourceType: 'accounts_payable',
         sourceId: id,

@@ -50,7 +50,7 @@ export function getAgingBucket(dueDate: Date | string): string {
 }
 
 export function getDaysUntil(date: Date | string): number {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = new Date(date)
   const now = new Date()
   now.setHours(0, 0, 0, 0)
   d.setHours(0, 0, 0, 0)

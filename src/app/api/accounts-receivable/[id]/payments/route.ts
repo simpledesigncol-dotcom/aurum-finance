@@ -60,7 +60,7 @@ export async function POST(
         companyId: ar.companyId,
         movementType: 'income',
         amount,
-        direction: 'incoming',
+        direction: 'in',
         movementDate: paymentDate ? new Date(paymentDate) : new Date(),
         sourceType: 'accounts_receivable',
         sourceId: id,

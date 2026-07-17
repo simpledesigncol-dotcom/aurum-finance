@@ -46,14 +46,24 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
+    const existing = await prisma.obligation.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Obligación no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const originalAmount = body.originalAmount ?? existing.originalAmount
+    const balance = Math.max(0, originalAmount - existing.paidAmount)
+
     const obligation = await prisma.obligation.update({
       where: { id },
       data: {
         ...(body.name !== undefined && { name: body.name }),
         ...(body.type !== undefined && { type: body.type }),
         ...(body.contactId !== undefined && { contactId: body.contactId || null }),
-        ...(body.originalAmount !== undefined && { originalAmount: body.originalAmount }),
-        ...(body.balance !== undefined && { balance: body.balance }),
+        ...(body.originalAmount !== undefined && { originalAmount: body.originalAmount, balance }),
         ...(body.interestRate !== undefined && { interestRate: body.interestRate }),
         ...(body.startDate !== undefined && { startDate: new Date(body.startDate) }),
         ...(body.endDate !== undefined && { endDate: body.endDate ? new Date(body.endDate) : null }),
@@ -89,6 +99,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const payments = await prisma.obligationPayment.findMany({ where: { obligationId: id }, select: { financialMovementId: true } })
+    const movementIds = payments.map(p => p.financialMovementId).filter(Boolean) as string[]
+    if (movementIds.length > 0) {
+      await prisma.financialMovement.deleteMany({ where: { id: { in: movementIds } } })
+    }
     await prisma.obligationPayment.deleteMany({ where: { obligationId: id } })
     await prisma.obligation.delete({ where: { id } })
     return NextResponse.json({ success: true })

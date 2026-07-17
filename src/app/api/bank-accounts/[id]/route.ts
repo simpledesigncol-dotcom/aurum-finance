@@ -21,11 +21,11 @@ export async function GET(
     }
 
     const incoming = await prisma.financialMovement.aggregate({
-      where: { sourceType: 'bank_account', sourceId: id, direction: 'incoming' },
+      where: { sourceType: 'bank_account', sourceId: id, direction: 'in' },
       _sum: { amount: true },
     })
     const outgoing = await prisma.financialMovement.aggregate({
-      where: { sourceType: 'bank_account', sourceId: id, direction: 'outgoing' },
+      where: { sourceType: 'bank_account', sourceId: id, direction: 'out' },
       _sum: { amount: true },
     })
 
@@ -77,6 +77,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    await prisma.paymentMethod.updateMany({ where: { bankAccountId: id }, data: { bankAccountId: null } })
     await prisma.bankAccount.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {

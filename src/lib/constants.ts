@@ -69,7 +69,7 @@ export const DEFAULT_SERVICE_CATEGORIES = [
   { name: 'Lavado Premium', type: 'service', icon: '✨' },
   { name: 'Full Detailing', type: 'service', icon: '🏆' },
   { name: 'Pulido', type: 'service', icon: '💫' },
-  { name: ' Ceramic Coating', type: 'service', icon: '🛡️' },
+  { name: 'Ceramic Coating', type: 'service', icon: '🛡️' },
   { name: 'PPF', type: 'service', icon: '🔮' },
   { name: 'Membership', type: 'service', icon: '👑' },
   { name: 'Flota', type: 'service', icon: '🏢' },

@@ -82,6 +82,8 @@ export async function DELETE(
   try {
     const { id } = await params
 
+    await prisma.purchasePayment.deleteMany({ where: { purchaseId: id } })
+    await prisma.financialMovement.deleteMany({ where: { referenceType: 'purchase', referenceId: id } })
     await prisma.purchaseItem.deleteMany({ where: { purchaseId: id } })
     await prisma.purchase.delete({ where: { id } })
 

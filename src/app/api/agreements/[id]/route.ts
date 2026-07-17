@@ -78,6 +78,8 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    await prisma.agreementSettlement.deleteMany({ where: { agreementId: id } })
+    await prisma.agreementItem.deleteMany({ where: { agreementId: id } })
     await prisma.agreement.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {

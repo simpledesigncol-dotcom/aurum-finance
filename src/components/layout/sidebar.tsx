@@ -137,7 +137,7 @@ export default function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside className={cn(
-        "hidden md:flex flex-col bg-card border-r border-border transition-all duration-200 shrink-0",
+        "hidden md:flex flex-col relative bg-card border-r border-border transition-all duration-200 shrink-0",
         collapsed ? "w-[58px]" : "w-56"
       )}>
         {navContent}

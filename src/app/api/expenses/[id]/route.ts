@@ -78,6 +78,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    await prisma.financialMovement.deleteMany({ where: { referenceType: 'expense', referenceId: id } })
     await prisma.expense.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {

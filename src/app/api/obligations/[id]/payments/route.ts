@@ -1,13 +1,9 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { generateTransactionId } from '@/lib/transactions'
+import { getDefaultRegisterId } from '@/lib/registers'
 
 export const dynamic = 'force-dynamic'
-
-async function getDefaultRegisterId(): Promise<string> {
-  const register = await prisma.cashRegister.findFirst({ select: { id: true } })
-  return register?.id || 'default'
-}
 
 export async function GET(
   _request: Request,

@@ -75,8 +75,6 @@ async function getDashboardData(period: string = 'month') {
   const overdueCount = await prisma.accountsReceivable.count({ where: { status: { not: 'paid' }, dueDate: { lt: now } } })
 
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const nextWeek = new Date(today)
-  nextWeek.setDate(nextWeek.getDate() + 7)
 
   const allObligations = await prisma.obligation.findMany({
     where: { status: { notIn: ['paid', 'completed', 'cancelled'] } },

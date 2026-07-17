@@ -23,11 +23,11 @@ export async function GET() {
     const balanceMap = new Map<string, number>()
     for (const m of movements) {
       const incoming = await prisma.financialMovement.aggregate({
-        where: { sourceType: 'bank_account', sourceId: m.sourceId, direction: 'incoming' },
+        where: { sourceType: 'bank_account', sourceId: m.sourceId, direction: 'in' },
         _sum: { amount: true },
       })
       const outgoing = await prisma.financialMovement.aggregate({
-        where: { sourceType: 'bank_account', sourceId: m.sourceId, direction: 'outgoing' },
+        where: { sourceType: 'bank_account', sourceId: m.sourceId, direction: 'out' },
         _sum: { amount: true },
       })
       balanceMap.set(
