@@ -128,7 +128,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose} />
 
-      <div className="relative bg-card rounded-xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.12)] w-full max-w-md mx-4 overflow-hidden animate-scale-in">
+      <div className="relative bg-card rounded-xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.12)] w-full max-w-md sm:mx-4 mx-2 max-h-[85vh] sm:max-h-[90vh] overflow-hidden animate-scale-in">
         {success && (
           <div className="absolute inset-0 z-10 bg-card flex flex-col items-center justify-center">
             <div className="w-14 h-14 rounded-full bg-success/[0.08] flex items-center justify-center mb-4">
@@ -224,7 +224,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Fecha</label>
                 <input

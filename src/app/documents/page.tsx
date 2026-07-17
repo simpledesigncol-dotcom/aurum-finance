@@ -241,7 +241,7 @@ export default function DocumentsPage() {
           subtitle="Adjunta un archivo al sistema"
           onClose={() => setUploadModalOpen(false)}
         >
-          <div className="p-5 space-y-4">
+          <div className="p-4 sm:p-5 space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Tipo de documento</label>
               <select

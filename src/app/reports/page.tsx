@@ -26,7 +26,7 @@ const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep
 function BarChart({ data }: { data: { label: string; income: number; expenses: number }[] }) {
   const maxVal = Math.max(...data.map(d => Math.max(d.income, d.expenses)), 1)
   return (
-    <div className="flex items-end gap-1 h-48 px-1">
+          <div className="flex items-end gap-1 h-48 px-1 overflow-x-auto">
       {data.map((d, i) => {
         const incomeH = (d.income / maxVal) * 100
         const expenseH = (d.expenses / maxVal) * 100
@@ -162,7 +162,7 @@ export default function ReportsPage() {
           <div className="h-7 w-48 bg-muted rounded-lg animate-pulse" />
           <div className="h-4 w-64 bg-muted rounded-lg animate-pulse" />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="rounded-xl border border-border p-4 space-y-3">
               <div className="h-3 w-16 bg-muted rounded animate-pulse" />
@@ -204,7 +204,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ingresos</span>

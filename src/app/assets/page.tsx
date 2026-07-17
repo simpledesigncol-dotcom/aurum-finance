@@ -307,8 +307,8 @@ export default function AssetsPage() {
           onClose={() => setModalOpen(false)}
           wide
         >
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className={labelClass}>Nombre *</label>
                 <input
@@ -333,7 +333,7 @@ export default function AssetsPage() {
                 </select>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <label className={labelClass}>Fecha compra *</label>
                 <input
@@ -369,7 +369,7 @@ export default function AssetsPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <label className={labelClass}>Valor residual</label>
                 <input
@@ -411,7 +411,7 @@ export default function AssetsPage() {
                 placeholder="Notas adicionales..."
               />
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
               <button type="button" onClick={() => setModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>

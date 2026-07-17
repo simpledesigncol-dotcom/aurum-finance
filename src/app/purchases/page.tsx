@@ -250,7 +250,7 @@ export default function PurchasesPage() {
                     <p className="text-sm font-medium truncate">
                       {purchase.contact?.name || purchase.invoiceNumber || 'Compra'}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground min-w-0 truncate">
                       {purchase.items.length} articulo{purchase.items.length !== 1 ? 's' : ''} · {purchase.purchaseType}
                     </p>
                   </div>
@@ -285,8 +285,8 @@ export default function PurchasesPage() {
           onClose={() => setModalOpen(false)}
           wide
         >
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Fecha *</label>
                 <input
@@ -311,7 +311,7 @@ export default function PurchasesPage() {
                 </select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">No. Factura</label>
                 <input
@@ -345,8 +345,8 @@ export default function PurchasesPage() {
                 </button>
               </div>
               {form.items.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-2">
-                  <div className="flex-1 space-y-1">
+                <div key={idx} className="flex flex-wrap items-start gap-2">
+                  <div className="flex-1 min-w-0 space-y-1">
                     <input
                       type="text"
                       value={item.itemName}
@@ -355,7 +355,7 @@ export default function PurchasesPage() {
                       placeholder="Nombre del item"
                     />
                   </div>
-                  <div className="w-20 space-y-1">
+                  <div className="w-20 min-w-0 space-y-1">
                     <input
                       type="number"
                       min="1"
@@ -365,7 +365,7 @@ export default function PurchasesPage() {
                       placeholder="Cant."
                     />
                   </div>
-                  <div className="w-28 space-y-1">
+                  <div className="w-28 min-w-0 space-y-1">
                     <input
                       type="number"
                       min="0"

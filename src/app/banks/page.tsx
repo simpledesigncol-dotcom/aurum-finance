@@ -181,7 +181,7 @@ export default function BanksPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {accounts.map((acc) => (
-            <div key={acc.id} className="bg-card rounded-xl border border-border p-4 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-all duration-200">
+            <div key={acc.id} className="bg-card rounded-xl border border-border p-4 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-all duration-200 overflow-hidden">
               <div className="flex items-center gap-2.5 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/[0.06] flex items-center justify-center">
                   <Building2 size={14} className="text-muted-foreground" />
@@ -199,8 +199,8 @@ export default function BanksPage() {
                   </button>
                 </div>
               </div>
-              <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(acc.balance)}</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xl font-bold tabular-nums tracking-tight truncate">{formatCurrency(acc.balance)}</p>
+              <p className="text-xs text-muted-foreground mt-1 truncate">
                 {acc.accountNumber || 'Sin numero'}
                 {acc.holderName && ` · ${acc.holderName}`}
               </p>
@@ -216,7 +216,7 @@ export default function BanksPage() {
           onClose={() => setModalOpen(false)}
           wide
         >
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Nombre del banco *</label>
               <input
@@ -228,7 +228,7 @@ export default function BanksPage() {
                 placeholder="Ej: Bancolombia, Davivienda..."
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Tipo de cuenta</label>
                 <select

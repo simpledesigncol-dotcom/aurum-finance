@@ -19,7 +19,7 @@ export default function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-card rounded-xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.12)] w-full max-w-sm mx-4 p-5 animate-scale-in">
+      <div className="relative bg-card rounded-xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.12)] w-full sm:max-w-sm mx-2 sm:mx-4 p-5 animate-scale-in">
         <div className="flex items-start gap-3">
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${danger ? 'bg-danger/[0.08]' : 'bg-warning/[0.08]'}`}>
             <AlertTriangle size={16} className={danger ? 'text-danger' : 'text-warning'} />

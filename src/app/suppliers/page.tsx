@@ -180,7 +180,7 @@ export default function SuppliersPage() {
 
       <div className="bg-card rounded-xl border border-border">
         <div className="px-5 py-3 border-b border-border flex items-center gap-3">
-          <div className="relative flex-1 max-w-xs">
+          <div className="relative flex-1 w-full sm:max-w-xs">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
             <input
               type="text"
@@ -247,7 +247,7 @@ export default function SuppliersPage() {
           onClose={() => setModalOpen(false)}
           wide
         >
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Nombre *</label>
               <input
@@ -259,7 +259,7 @@ export default function SuppliersPage() {
                 placeholder="Nombre del proveedor"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Tipo documento</label>
                 <select
@@ -284,7 +284,7 @@ export default function SuppliersPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Email</label>
                 <input

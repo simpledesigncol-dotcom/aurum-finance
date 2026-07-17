@@ -131,10 +131,10 @@ export default function GlobalSearch() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] sm:pt-[15vh]">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setOpen(false)} />
 
-      <div className="relative bg-card rounded-xl border border-border shadow-[0_24px_80px_rgba(0,0,0,0.12)] w-full max-w-lg mx-4 overflow-hidden animate-scale-in">
+      <div className="relative bg-card rounded-xl border border-border shadow-[0_24px_80px_rgba(0,0,0,0.12)] w-full sm:max-w-lg sm:mx-4 mx-2 overflow-hidden animate-scale-in">
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border">
           <Search size={16} className="text-muted-foreground shrink-0" strokeWidth={1.8} />
           <input

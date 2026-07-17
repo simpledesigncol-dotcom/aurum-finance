@@ -466,7 +466,7 @@ export default function AgreementsPage() {
                   </div>
                 </div>
 
-                <div className="px-5 py-2.5 border-t border-border flex items-center gap-2">
+                <div className="px-5 py-2.5 border-t border-border flex items-center gap-2 flex-wrap">
                   <button onClick={() => openItemModal(agreement.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors">
                     <Car size={13} strokeWidth={1.8} />
                     Agregar trabajo
@@ -562,7 +562,7 @@ export default function AgreementsPage() {
           onClose={() => setModalOpen(false)}
           wide
         >
-          <form onSubmit={handleAgreementSubmit} className="p-5 space-y-4">
+          <form onSubmit={handleAgreementSubmit} className="p-4 sm:p-5 space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Titulo *</label>
               <input
@@ -574,7 +574,7 @@ export default function AgreementsPage() {
                 placeholder="Nombre del acuerdo"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Contratista *</label>
                 <input
@@ -639,7 +639,7 @@ export default function AgreementsPage() {
                 </label>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Split pintura Aurum %</label>
                 <input
@@ -674,7 +674,7 @@ export default function AgreementsPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Fecha inicio *</label>
                 <input
@@ -747,8 +747,8 @@ export default function AgreementsPage() {
           subtitle="Registrar un nuevo trabajo en el acuerdo"
           onClose={() => setItemModalAgreementId(null)}
         >
-          <form onSubmit={handleItemSubmit} className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={handleItemSubmit} className="p-4 sm:p-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Placa vehiculo *</label>
                 <input
@@ -859,7 +859,7 @@ export default function AgreementsPage() {
           subtitle="Registrar un movimiento de pago entre Aurum y el contratista"
           onClose={() => setSettlementModalAgreementId(null)}
         >
-          <form onSubmit={handleSettlementSubmit} className="p-5 space-y-4">
+          <form onSubmit={handleSettlementSubmit} className="p-4 sm:p-5 space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Trabajo asociado (opcional)</label>
               <select
@@ -875,7 +875,7 @@ export default function AgreementsPage() {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Fecha *</label>
                 <input
@@ -910,7 +910,7 @@ export default function AgreementsPage() {
                 <option value="contractor_to_aurum">Contratista → Aurum</option>
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Metodo de pago</label>
                 <input

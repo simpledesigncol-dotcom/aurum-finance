@@ -345,7 +345,7 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            <div className="px-5 py-2.5 border-b border-border flex items-center gap-2">
+            <div className="px-5 py-2.5 border-b border-border flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setCatFilter('')}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
@@ -460,7 +460,7 @@ export default function SettingsPage() {
           subtitle="Crear una categoría para organizar movimientos"
           onClose={() => setCatModalOpen(false)}
         >
-          <form onSubmit={handleCreateCategory} className="p-5 space-y-4">
+          <form onSubmit={handleCreateCategory} className="p-4 sm:p-5 space-y-4">
             <div className="space-y-1.5">
               <label className={labelClass}>Nombre *</label>
               <input
@@ -484,7 +484,7 @@ export default function SettingsPage() {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className={labelClass}>Icono (emoji)</label>
                 <input
@@ -507,11 +507,12 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2 w-full">{formError}</p>)}
+              <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setCatModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
-              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <button
                 type="submit"
                 disabled={savingCat || !catForm.name}
@@ -520,6 +521,7 @@ export default function SettingsPage() {
                 {savingCat ? <Loader2 size={13} className="animate-spin" /> : null}
                 Crear
               </button>
+              </div>
             </div>
           </form>
         </Modal>
@@ -531,7 +533,7 @@ export default function SettingsPage() {
           subtitle="Agregar un método de pago disponible"
           onClose={() => setPmModalOpen(false)}
         >
-          <form onSubmit={handleCreatePm} className="p-5 space-y-4">
+          <form onSubmit={handleCreatePm} className="p-4 sm:p-5 space-y-4">
             <div className="space-y-1.5">
               <label className={labelClass}>Nombre *</label>
               <input
@@ -555,11 +557,12 @@ export default function SettingsPage() {
                 ))}
               </select>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2 w-full">{formError}</p>)}
+              <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setPmModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
-              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <button
                 type="submit"
                 disabled={savingPm || !pmForm.name}
@@ -568,6 +571,7 @@ export default function SettingsPage() {
                 {savingPm ? <Loader2 size={13} className="animate-spin" /> : null}
                 Crear
               </button>
+              </div>
             </div>
           </form>
         </Modal>

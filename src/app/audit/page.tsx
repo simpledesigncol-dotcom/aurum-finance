@@ -59,12 +59,12 @@ export default async function AuditPage() {
                     <Icon size={14} className="text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-medium truncate">
                       <span className="capitalize">{log.action}</span>
                       {' '}
                       <span className="text-muted-foreground">{log.entityType.replace('_', ' ')}</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground truncate">
                       {log.user?.name || 'Sistema'} · ID: {log.entityId.slice(0, 8)}...
                     </p>
                   </div>

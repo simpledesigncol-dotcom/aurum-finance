@@ -491,7 +491,7 @@ export default function ObligationsPage() {
 
       <div className="bg-card rounded-xl border border-border">
         <div className="px-5 py-3.5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             {FILTER_TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -546,7 +546,7 @@ export default function ObligationsPage() {
               return (
                 <div
                   key={o.id}
-                  className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors"
+                  className="px-5 py-3 flex flex-wrap items-center gap-3 hover:bg-muted/40 transition-colors"
                 >
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-sm ${
@@ -560,14 +560,14 @@ export default function ObligationsPage() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium truncate">{o.name}</p>
                       <span
-                        className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${
+                        className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${
                           TYPE_COLOR_MAP[typeInfo?.color || 'muted'] || 'bg-muted text-muted-foreground'
                         }`}
                       >
                         {typeInfo?.label || o.type}
                       </span>
                       <span
-                        className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${
+                        className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${
                           PRIORITY_STYLES[o.priority] || 'bg-muted text-muted-foreground'
                         }`}
                       >
@@ -578,7 +578,7 @@ export default function ObligationsPage() {
                       {o.contact?.name && (
                         <p className="text-xs text-muted-foreground">{o.contact.name}</p>
                       )}
-                      <div className="flex-1 max-w-[200px]">
+                      <div className="flex-1 max-w-full sm:max-w-[200px]">
                         <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                           <div
                             className="h-full bg-blue rounded-full transition-all"
@@ -652,8 +652,8 @@ export default function ObligationsPage() {
           onClose={() => setModalOpen(false)}
           wide
         >
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className={`${labelClass} block mb-1.5`}>Nombre *</label>
                 <input
@@ -879,7 +879,7 @@ export default function ObligationsPage() {
               <p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
@@ -905,7 +905,7 @@ export default function ObligationsPage() {
           subtitle={`Pago a: ${paymentModal.name}`}
           onClose={() => setPaymentModal(null)}
         >
-          <form onSubmit={handlePayment} className="p-5 space-y-4">
+          <form onSubmit={handlePayment} className="p-4 sm:p-5 space-y-4">
             <div className="bg-muted/40 rounded-lg p-3">
               <p className="text-xs text-muted-foreground">Saldo pendiente</p>
               <p className="text-lg font-bold tabular-nums">
@@ -1032,7 +1032,7 @@ export default function ObligationsPage() {
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setPaymentModal(null)}

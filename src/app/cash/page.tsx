@@ -94,7 +94,7 @@ export default async function CashPage() {
 
       {data.register && (
         <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-blue/[0.08] flex items-center justify-center">
                 <Wallet size={16} className="text-blue" />
@@ -106,7 +106,7 @@ export default async function CashPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                 data.register.status === 'open'
                   ? 'bg-success/[0.08] text-success'
@@ -151,7 +151,7 @@ export default async function CashPage() {
                   <p className="text-sm font-medium truncate">
                     {m.description || m.movementType}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate min-w-0">
                     <span className="font-mono text-[11px] text-muted-foreground/70 mr-1">{m.transactionId}</span>
                     {m.category?.name || m.movementType}
                     {m.contact && ` · ${m.contact.name}`}

@@ -22,7 +22,7 @@ export default function PeriodFilter() {
   }
 
   return (
-    <div className="flex items-center bg-muted rounded-lg p-[3px]">
+    <div className="flex items-center flex-wrap bg-muted rounded-lg p-[3px]">
       {periods.map((p) => (
         <button
           key={p.id}

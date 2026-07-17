@@ -306,7 +306,7 @@ export default function PayablesPage() {
           onClose={() => setModalOpen(false)}
           wide
         >
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Contacto</label>
               <input type="text" value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} className={inputClass} placeholder="Nombre del proveedor" />
@@ -319,7 +319,7 @@ export default function PayablesPage() {
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Monto original *</label>
               <input type="number" required min="0" step="any" value={form.originalAmount} onChange={(e) => setForm({ ...form, originalAmount: e.target.value })} className={inputClass} placeholder="0" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Fecha emision *</label>
                 <input type="date" required value={form.issueDate} onChange={(e) => setForm({ ...form, issueDate: e.target.value })} className={inputClass} />
@@ -348,7 +348,7 @@ export default function PayablesPage() {
 
       {paymentModal && (
         <Modal title="Registrar pago" subtitle={`Pago: ${paymentModal.description}`} onClose={() => setPaymentModal(null)}>
-          <form onSubmit={handlePayment} className="p-5 space-y-4">
+          <form onSubmit={handlePayment} className="p-4 sm:p-5 space-y-4">
             <div className="bg-muted/40 rounded-lg p-3">
               <p className="text-xs text-muted-foreground">Saldo pendiente</p>
               <p className="text-lg font-bold tabular-nums">{formatCurrency(paymentModal.balance)}</p>

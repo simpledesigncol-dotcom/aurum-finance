@@ -211,7 +211,7 @@ export default function TreasuryPage() {
                   <p className="text-sm font-medium truncate">
                     {m.description || movementTypeLabel(m.movementType)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     <span className="font-mono text-[11px] text-muted-foreground/70 mr-1">{m.transactionId}</span>
                     {m.category?.name || movementTypeLabel(m.movementType)}
                     {m.contact && ` · ${m.contact.name}`}

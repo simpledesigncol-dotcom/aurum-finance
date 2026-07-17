@@ -220,7 +220,7 @@ export default function ExpensesPage() {
       </div>
 
       <div className="bg-card rounded-xl border border-border">
-        <div className="px-5 py-3 border-b border-border flex items-center gap-3">
+        <div className="px-5 py-3 border-b border-border flex flex-wrap items-center gap-3">
           <select
             value={filterCategory}
             onChange={(e) => handleCategoryFilter(e.target.value)}
@@ -290,8 +290,8 @@ export default function ExpensesPage() {
           onClose={() => setModalOpen(false)}
           wide
         >
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Monto *</label>
                 <input
@@ -325,7 +325,7 @@ export default function ExpensesPage() {
                 placeholder="Descripcion del gasto"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Categoria</label>
                 <select
@@ -353,7 +353,7 @@ export default function ExpensesPage() {
                 </select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Contacto</label>
                 <input

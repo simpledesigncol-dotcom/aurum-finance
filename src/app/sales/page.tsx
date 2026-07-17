@@ -241,7 +241,7 @@ export default function SalesPage() {
             sales.map((sale) => {
               const badge = getStatusBadge(sale.status, sale.balanceDue)
               return (
-                <div key={sale.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors duration-150">
+                <div key={sale.id} className="px-5 py-3 flex items-center gap-3 flex-wrap hover:bg-muted/40 transition-colors duration-150">
                   <div className="w-8 h-8 rounded-lg bg-success/[0.08] text-success flex items-center justify-center shrink-0">
                     <ArrowDownLeft size={14} strokeWidth={1.8} />
                   </div>
@@ -249,7 +249,7 @@ export default function SalesPage() {
                     <p className="text-sm font-medium truncate">
                       {sale.contact?.name || 'Venta directa'}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground min-w-0 truncate">
                       {sale.items.length} servicio{sale.items.length !== 1 ? 's' : ''} · {sale.paymentType}
                     </p>
                   </div>
@@ -297,8 +297,8 @@ export default function SalesPage() {
           onClose={() => setModalOpen(false)}
           wide
         >
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Fecha *</label>
                 <input
@@ -342,8 +342,8 @@ export default function SalesPage() {
                 </button>
               </div>
               {form.items.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-2">
-                  <div className="flex-1 space-y-1">
+                <div key={idx} className="flex items-start gap-2 flex-wrap">
+                  <div className="flex-1 min-w-0 space-y-1">
                     <input
                       type="text"
                       value={item.serviceName}
@@ -391,7 +391,7 @@ export default function SalesPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Descuento</label>
                 <input
