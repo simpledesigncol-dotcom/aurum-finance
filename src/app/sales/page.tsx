@@ -72,6 +72,7 @@ export default function SalesPage() {
   const [editing, setEditing] = useState<Sale | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Sale | null>(null)
 
   const fetchSales = useCallback(async () => {
@@ -92,6 +93,7 @@ export default function SalesPage() {
   const openCreate = () => {
     setEditing(null)
     setForm({ ...emptyForm, items: [{ serviceName: '', quantity: 1, unitPrice: 0 }] })
+    setFormError('')
     setModalOpen(true)
   }
 
@@ -108,12 +110,14 @@ export default function SalesPage() {
       tax: sale.tax ? String(sale.tax) : '',
       notes: sale.notes || '',
     })
+    setFormError('')
     setModalOpen(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.saleDate || form.items.every(i => !i.serviceName.trim())) return
+    setFormError('')
     setSaving(true)
 
     const validItems = form.items.filter(i => i.serviceName.trim() && i.unitPrice > 0)
@@ -129,22 +133,32 @@ export default function SalesPage() {
 
     try {
       if (editing) {
-        await fetch(`/api/sales/${editing.id}`, {
+        const res = await fetch(`/api/sales/${editing.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ paymentType: payload.paymentType, discount: payload.discount, tax: payload.tax, notes: payload.notes }),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
+        }
       } else {
-        await fetch('/api/sales', {
+        const res = await fetch('/api/sales', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
+        }
       }
       setModalOpen(false)
       fetchSales()
     } catch {
-      console.error('Error saving sale')
+      setFormError('Error de conexion. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -414,6 +428,7 @@ export default function SalesPage() {
               <button type="button" onClick={() => setModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <button
                 type="submit"
                 disabled={saving || form.items.every(i => !i.serviceName.trim())}

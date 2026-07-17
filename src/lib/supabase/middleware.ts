@@ -23,16 +23,16 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
   const isAuthPage = request.nextUrl.pathname === '/login'
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
 
-  if (isApiRoute && !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (isApiRoute) {
+    return supabaseResponse
   }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone()

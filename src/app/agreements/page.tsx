@@ -133,6 +133,7 @@ export default function AgreementsPage() {
   const [editingAgreement, setEditingAgreement] = useState<Agreement | null>(null)
   const [form, setForm] = useState(emptyAgreementForm)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
 
   const [deleteTarget, setDeleteTarget] = useState<Agreement | null>(null)
 
@@ -168,6 +169,7 @@ export default function AgreementsPage() {
   const openCreate = () => {
     setEditingAgreement(null)
     setForm(emptyAgreementForm)
+    setFormError('')
     setModalOpen(true)
   }
 
@@ -188,12 +190,14 @@ export default function AgreementsPage() {
       paymentTerms: ag.paymentTerms || '',
       notes: ag.notes || '',
     })
+    setFormError('')
     setModalOpen(true)
   }
 
   const handleAgreementSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title.trim() || !form.contractorName.trim()) return
+    setFormError('')
     setSaving(true)
 
     const payload = {
@@ -215,7 +219,7 @@ export default function AgreementsPage() {
 
     try {
       if (editingAgreement) {
-        await fetch(`/api/agreements/${editingAgreement.id}`, {
+        const res = await fetch(`/api/agreements/${editingAgreement.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -226,17 +230,27 @@ export default function AgreementsPage() {
             notes: payload.notes,
           }),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
+        }
       } else {
-        await fetch('/api/agreements', {
+        const res = await fetch('/api/agreements', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
+        }
       }
       setModalOpen(false)
       fetchAgreements()
     } catch {
-      console.error('Error saving agreement')
+      setFormError('Error de conexion. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -714,6 +728,7 @@ export default function AgreementsPage() {
               <button type="button" onClick={() => setModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <button
                 type="submit"
                 disabled={saving || !form.title.trim() || !form.contractorName.trim()}

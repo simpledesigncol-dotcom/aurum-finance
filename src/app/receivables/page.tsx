@@ -64,6 +64,7 @@ export default function ReceivablesPage() {
   const [editing, setEditing] = useState<AR | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<AR | null>(null)
   const [paymentModal, setPaymentModal] = useState<AR | null>(null)
   const [paymentForm, setPaymentForm] = useState(emptyPayment)
@@ -90,6 +91,7 @@ export default function ReceivablesPage() {
   const openCreate = () => {
     setEditing(null)
     setForm(emptyForm)
+    setFormError('')
     setModalOpen(true)
   }
 
@@ -103,6 +105,7 @@ export default function ReceivablesPage() {
       dueDate: ar.dueDate.split('T')[0],
       notes: ar.notes || '',
     })
+    setFormError('')
     setModalOpen(true)
   }
 
@@ -124,6 +127,7 @@ export default function ReceivablesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.contactName.trim() || !form.description.trim() || !form.originalAmount || !form.issueDate || !form.dueDate) return
+    setFormError('')
     setSaving(true)
 
     try {
@@ -138,22 +142,32 @@ export default function ReceivablesPage() {
       }
 
       if (editing) {
-        await fetch(`/api/accounts-receivable/${editing.id}`, {
+        const res = await fetch(`/api/accounts-receivable/${editing.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...payload, balance: parseFloat(form.originalAmount) }),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
+        }
       } else {
-        await fetch('/api/accounts-receivable', {
+        const res = await fetch('/api/accounts-receivable', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
+        }
       }
       setModalOpen(false)
       fetchAccounts()
     } catch {
-      console.error('Error saving AR')
+      setFormError('Error de conexion. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -323,6 +337,7 @@ export default function ReceivablesPage() {
               <button type="button" onClick={() => setModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <button type="submit" disabled={saving || !form.contactName.trim() || !form.description.trim() || !form.originalAmount || !form.issueDate || !form.dueDate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50">
                 {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
               </button>

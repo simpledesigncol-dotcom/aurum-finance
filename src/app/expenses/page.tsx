@@ -50,6 +50,7 @@ export default function ExpensesPage() {
   const [editing, setEditing] = useState<Expense | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null)
 
   const fetchExpenses = useCallback(async (catId?: string) => {
@@ -107,6 +108,7 @@ export default function ExpensesPage() {
   const openCreate = () => {
     setEditing(null)
     setForm(emptyForm)
+    setFormError('')
     setModalOpen(true)
   }
 
@@ -122,12 +124,14 @@ export default function ExpensesPage() {
       receiptNumber: expense.receiptNumber || '',
       notes: expense.notes || '',
     })
+    setFormError('')
     setModalOpen(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.amount || !form.expenseDate) return
+    setFormError('')
     setSaving(true)
 
     const payload = {
@@ -143,22 +147,32 @@ export default function ExpensesPage() {
 
     try {
       if (editing) {
-        await fetch(`/api/expenses/${editing.id}`, {
+        const res = await fetch(`/api/expenses/${editing.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
+        }
       } else {
-        await fetch('/api/expenses', {
+        const res = await fetch('/api/expenses', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
+        }
       }
       setModalOpen(false)
       fetchExpenses(filterCategory || undefined)
     } catch {
-      console.error('Error saving expense')
+      setFormError('Error de conexion. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -374,6 +388,7 @@ export default function ExpensesPage() {
               <button type="button" onClick={() => setModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <button
                 type="submit"
                 disabled={saving || !form.amount || !form.expenseDate}

@@ -58,6 +58,7 @@ export default function SettingsPage() {
 
   const [companyForm, setCompanyForm] = useState({ name: '', nit: '', address: '', phone: '', email: '' })
   const [savingCompany, setSavingCompany] = useState(false)
+  const [formError, setFormError] = useState('')
   const [companySaved, setCompanySaved] = useState(false)
 
   const [catFilter, setCatFilter] = useState('')
@@ -98,6 +99,7 @@ export default function SettingsPage() {
 
   const handleSaveCompany = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError('')
     setSavingCompany(true)
     try {
       const res = await fetch('/api/settings', {
@@ -105,14 +107,17 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(companyForm),
       })
-      if (res.ok) {
-        const updated = await res.json()
-        setCompany(updated)
-        setCompanySaved(true)
-        setTimeout(() => setCompanySaved(false), 3000)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+        setFormError(err.error || `Error ${res.status}`)
+        return
       }
+      const updated = await res.json()
+      setCompany(updated)
+      setCompanySaved(true)
+      setTimeout(() => setCompanySaved(false), 3000)
     } catch {
-      console.error('Error saving company')
+      setFormError('Error de conexion. Intente de nuevo.')
     } finally {
       setSavingCompany(false)
     }
@@ -121,6 +126,7 @@ export default function SettingsPage() {
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!catForm.name) return
+    setFormError('')
     setSavingCat(true)
     try {
       const res = await fetch('/api/settings/categories', {
@@ -128,14 +134,17 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(catForm),
       })
-      if (res.ok) {
-        const cat = await res.json()
-        setCategories(prev => [...prev, cat].sort((a, b) => a.sortOrder - b.sortOrder))
-        setCatModalOpen(false)
-        setCatForm({ name: '', type: 'expense', icon: '', color: '' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+        setFormError(err.error || `Error ${res.status}`)
+        return
       }
+      const cat = await res.json()
+      setCategories(prev => [...prev, cat].sort((a, b) => a.sortOrder - b.sortOrder))
+      setCatModalOpen(false)
+      setCatForm({ name: '', type: 'expense', icon: '', color: '' })
     } catch {
-      console.error('Error creating category')
+      setFormError('Error de conexion. Intente de nuevo.')
     } finally {
       setSavingCat(false)
     }
@@ -155,6 +164,7 @@ export default function SettingsPage() {
   const handleCreatePm = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!pmForm.name) return
+    setFormError('')
     setSavingPm(true)
     try {
       const res = await fetch('/api/settings/payment-methods', {
@@ -162,14 +172,17 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(pmForm),
       })
-      if (res.ok) {
-        const pm = await res.json()
-        setPaymentMethods(prev => [...prev, pm])
-        setPmModalOpen(false)
-        setPmForm({ name: '', type: 'cash' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+        setFormError(err.error || `Error ${res.status}`)
+        return
       }
+      const pm = await res.json()
+      setPaymentMethods(prev => [...prev, pm])
+      setPmModalOpen(false)
+      setPmForm({ name: '', type: 'cash' })
     } catch {
-      console.error('Error creating payment method')
+      setFormError('Error de conexion. Intente de nuevo.')
     } finally {
       setSavingPm(false)
     }
@@ -299,6 +312,7 @@ export default function SettingsPage() {
                   Guardado correctamente
                 </span>
               )}
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <div className="flex-1" />
               <button
                 type="submit"
@@ -323,7 +337,7 @@ export default function SettingsPage() {
                 <span className="text-[11px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">{categories.length}</span>
               </div>
               <button
-                onClick={() => { setCatForm({ name: '', type: 'expense', icon: '', color: '' }); setCatModalOpen(true) }}
+                onClick={() => { setCatForm({ name: '', type: 'expense', icon: '', color: '' }); setFormError(''); setCatModalOpen(true) }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors"
               >
                 <Plus size={13} />
@@ -397,8 +411,8 @@ export default function SettingsPage() {
               <h2 className="text-sm font-semibold">Métodos de Pago</h2>
               <span className="text-[11px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">{paymentMethods.length}</span>
             </div>
-            <button
-              onClick={() => { setPmForm({ name: '', type: 'cash' }); setPmModalOpen(true) }}
+              <button
+                onClick={() => { setPmForm({ name: '', type: 'cash' }); setFormError(''); setPmModalOpen(true) }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors"
             >
               <Plus size={13} />
@@ -497,6 +511,7 @@ export default function SettingsPage() {
               <button type="button" onClick={() => setCatModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <button
                 type="submit"
                 disabled={savingCat || !catForm.name}
@@ -544,6 +559,7 @@ export default function SettingsPage() {
               <button type="button" onClick={() => setPmModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <button
                 type="submit"
                 disabled={savingPm || !pmForm.name}

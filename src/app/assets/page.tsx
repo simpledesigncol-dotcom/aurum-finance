@@ -55,6 +55,7 @@ export default function AssetsPage() {
   const [editing, setEditing] = useState<Asset | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Asset | null>(null)
 
   const fetchAssets = useCallback(async () => {
@@ -79,6 +80,7 @@ export default function AssetsPage() {
   const openCreate = () => {
     setEditing(null)
     setForm(emptyForm)
+    setFormError('')
     setModalOpen(true)
   }
 
@@ -95,12 +97,14 @@ export default function AssetsPage() {
       location: asset.location || '',
       notes: asset.notes || '',
     })
+    setFormError('')
     setModalOpen(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name || !form.purchasePrice || !form.usefulLifeMonths) return
+    setFormError('')
     setSaving(true)
 
     const payload = {
@@ -122,24 +126,30 @@ export default function AssetsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
-        if (res.ok) {
-          const updated = await res.json()
-          setAssets(prev => prev.map(a => a.id === editing.id ? updated : a))
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
         }
+        const updated = await res.json()
+        setAssets(prev => prev.map(a => a.id === editing.id ? updated : a))
       } else {
         const res = await fetch('/api/assets', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
-        if (res.ok) {
-          const created = await res.json()
-          setAssets(prev => [created, ...prev])
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
         }
+        const created = await res.json()
+        setAssets(prev => [created, ...prev])
       }
       setModalOpen(false)
     } catch {
-      console.error('Error saving asset')
+      setFormError('Error de conexion. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -405,6 +415,7 @@ export default function AssetsPage() {
               <button type="button" onClick={() => setModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <button
                 type="submit"
                 disabled={saving || !form.name || !form.purchasePrice || !form.usefulLifeMonths}

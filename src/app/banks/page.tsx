@@ -30,6 +30,7 @@ export default function BanksPage() {
   const [editing, setEditing] = useState<BankAccount | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<BankAccount | null>(null)
 
   const fetchAccounts = useCallback(async () => {
@@ -52,6 +53,7 @@ export default function BanksPage() {
   const openCreate = () => {
     setEditing(null)
     setForm(emptyForm)
+    setFormError('')
     setModalOpen(true)
   }
 
@@ -63,12 +65,14 @@ export default function BanksPage() {
       accountNumber: a.accountNumber || '',
       holderName: a.holderName || '',
     })
+    setFormError('')
     setModalOpen(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.bankName.trim()) return
+    setFormError('')
     setSaving(true)
 
     const payload = {
@@ -80,22 +84,32 @@ export default function BanksPage() {
 
     try {
       if (editing) {
-        await fetch(`/api/bank-accounts/${editing.id}`, {
+        const res = await fetch(`/api/bank-accounts/${editing.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
+        }
       } else {
-        await fetch('/api/bank-accounts', {
+        const res = await fetch('/api/bank-accounts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+          setFormError(err.error || `Error ${res.status}`)
+          return
+        }
       }
       setModalOpen(false)
       fetchAccounts()
     } catch {
-      console.error('Error saving bank account')
+      setFormError('Error de conexion. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -254,6 +268,7 @@ export default function BanksPage() {
               <button type="button" onClick={() => setModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
+              {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
               <button
                 type="submit"
                 disabled={saving || !form.bankName.trim()}

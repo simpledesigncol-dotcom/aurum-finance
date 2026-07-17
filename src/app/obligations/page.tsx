@@ -195,6 +195,7 @@ export default function ObligationsPage() {
   const [editing, setEditing] = useState<Obligation | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
 
   const [deleteTarget, setDeleteTarget] = useState<Obligation | null>(null)
 
@@ -261,6 +262,7 @@ export default function ObligationsPage() {
   const openCreate = () => {
     setEditing(null)
     setForm(emptyForm)
+    setFormError('')
     setModalOpen(true)
   }
 
@@ -305,6 +307,7 @@ export default function ObligationsPage() {
     e.preventDefault()
     if (!form.name.trim() || !form.originalAmount || !form.startDate) return
     setSaving(true)
+    setFormError('')
 
     try {
       const contactId = await findOrCreateContact(form.contactName)
@@ -324,8 +327,9 @@ export default function ObligationsPage() {
         notes: form.notes || null,
       }
 
+      let res
       if (editing) {
-        await fetch(`/api/obligations/${editing.id}`, {
+        res = await fetch(`/api/obligations/${editing.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -334,16 +338,24 @@ export default function ObligationsPage() {
           }),
         })
       } else {
-        await fetch('/api/obligations', {
+        res = await fetch('/api/obligations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
       }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+        setFormError(err.error || `Error ${res.status}`)
+        return
+      }
+
       setModalOpen(false)
       fetchObligations()
-    } catch {
-      console.error('Error saving obligation')
+    } catch (err) {
+      console.error('Error saving obligation:', err)
+      setFormError('Error de conexión. Verifica tu internet.')
     } finally {
       setSaving(false)
     }
@@ -832,6 +844,10 @@ export default function ObligationsPage() {
                 />
               </div>
             </div>
+
+            {formError && (
+              <p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>
+            )}
 
             <div className="flex justify-end gap-2 pt-2">
               <button
