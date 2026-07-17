@@ -1,9 +1,8 @@
 [build]
   command = "npx prisma generate && npx next build"
-  publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
   NEXT_EXPERIMENTAL_COMPILE_CACHE = "1"
 
 [[plugins]]
