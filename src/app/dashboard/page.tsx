@@ -117,23 +117,29 @@ async function getDashboardData(period: string = 'month') {
       barData.push({ label: dayNames[d.getDay()], income: dm.filter(m => m.direction === 'in').reduce((s, m) => s + Number(m.amount), 0), expenses: dm.filter(m => m.direction === 'out').reduce((s, m) => s + Number(m.amount), 0) })
     }
   } else if (period === 'month') {
-    for (let i = 11; i >= 0; i--) {
-      const ws = new Date(now); ws.setDate(now.getDate() - (i * 7 + now.getDay())); ws.setHours(0, 0, 0, 0)
-      const we = new Date(ws); we.setDate(ws.getDate() + 7)
-      const wm = allMovements.filter(m => m.movementDate >= ws && m.movementDate < we)
-      barData.push({ label: `S${12 - i}`, income: wm.filter(m => m.direction === 'in').reduce((s, m) => s + Number(m.amount), 0), expenses: wm.filter(m => m.direction === 'out').reduce((s, m) => s + Number(m.amount), 0) })
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    const weekStart = new Date(monthStart)
+    let weekNum = 1
+    while (weekStart < monthEnd) {
+      const wEnd = new Date(weekStart); wEnd.setDate(weekStart.getDate() + 7)
+      const wm = allMovements.filter(m => m.movementDate >= weekStart && m.movementDate < (wEnd < monthEnd ? wEnd : monthEnd))
+      barData.push({ label: `S${weekNum}`, income: wm.filter(m => m.direction === 'in').reduce((s, m) => s + Number(m.amount), 0), expenses: wm.filter(m => m.direction === 'out').reduce((s, m) => s + Number(m.amount), 0) })
+      weekStart.setDate(weekStart.getDate() + 7)
+      weekNum++
     }
   } else if (period === 'quarter') {
-    for (let i = 2; i >= 0; i--) {
-      const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1)
+    const quarter = Math.floor(now.getMonth() / 3)
+    for (let i = 0; i < 3; i++) {
+      const m = new Date(now.getFullYear(), quarter * 3 + i, 1)
+      const mEnd = new Date(now.getFullYear(), quarter * 3 + i + 1, 1)
       const mm = allMovements.filter(mt => mt.movementDate >= m && mt.movementDate < mEnd)
       barData.push({ label: monthNames[m.getMonth()], income: mm.filter(mt => mt.direction === 'in').reduce((s, mt) => s + Number(mt.amount), 0), expenses: mm.filter(mt => mt.direction === 'out').reduce((s, mt) => s + Number(mt.amount), 0) })
     }
   } else {
-    for (let i = 11; i >= 0; i--) {
-      const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1)
+    for (let i = 0; i < 12; i++) {
+      const m = new Date(now.getFullYear(), i, 1)
+      const mEnd = new Date(now.getFullYear(), i + 1, 1)
       const mm = allMovements.filter(mt => mt.movementDate >= m && mt.movementDate < mEnd)
       barData.push({ label: monthNames[m.getMonth()], income: mm.filter(mt => mt.direction === 'in').reduce((s, mt) => s + Number(mt.amount), 0), expenses: mm.filter(mt => mt.direction === 'out').reduce((s, mt) => s + Number(mt.amount), 0) })
     }

@@ -105,9 +105,9 @@ export default function ReportsPage() {
 
   const barData: { label: string; income: number; expenses: number }[] = []
   if (period === 'year') {
-    for (let i = 11; i >= 0; i--) {
-      const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1)
+    for (let i = 0; i < 12; i++) {
+      const m = new Date(now.getFullYear(), i, 1)
+      const mEnd = new Date(now.getFullYear(), i + 1, 1)
       const mm = movements.filter(mt => {
         const d = new Date(mt.movementDate)
         return d >= m && d < mEnd
@@ -119,9 +119,10 @@ export default function ReportsPage() {
       })
     }
   } else if (period === 'quarter') {
-    for (let i = 2; i >= 0; i--) {
-      const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1)
+    const quarter = Math.floor(now.getMonth() / 3)
+    for (let i = 0; i < 3; i++) {
+      const m = new Date(now.getFullYear(), quarter * 3 + i, 1)
+      const mEnd = new Date(now.getFullYear(), quarter * 3 + i + 1, 1)
       const mm = movements.filter(mt => {
         const d = new Date(mt.movementDate)
         return d >= m && d < mEnd
@@ -133,21 +134,23 @@ export default function ReportsPage() {
       })
     }
   } else {
-    for (let i = 11; i >= 0; i--) {
-      const ws = new Date(now)
-      ws.setDate(now.getDate() - (i * 7 + now.getDay()))
-      ws.setHours(0, 0, 0, 0)
-      const we = new Date(ws)
-      we.setDate(ws.getDate() + 7)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    const weekStart = new Date(monthStart)
+    let weekNum = 1
+    while (weekStart < monthEnd) {
+      const wEnd = new Date(weekStart); wEnd.setDate(weekStart.getDate() + 7)
       const wm = movements.filter(m => {
         const d = new Date(m.movementDate)
-        return d >= ws && d < we
+        return d >= weekStart && d < (wEnd < monthEnd ? wEnd : monthEnd)
       })
       barData.push({
-        label: `S${12 - i}`,
+        label: `S${weekNum}`,
         income: wm.filter(m => m.direction === 'in').reduce((s, m) => s + m.amount, 0),
         expenses: wm.filter(m => m.direction === 'out').reduce((s, m) => s + m.amount, 0),
       })
+      weekStart.setDate(weekStart.getDate() + 7)
+      weekNum++
     }
   }
 

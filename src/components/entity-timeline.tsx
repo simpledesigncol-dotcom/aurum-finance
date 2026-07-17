@@ -172,6 +172,7 @@ async function getTimelineEvents(
       title: `CxC - ${a.description}`,
       subtitle: a.status,
       amount: Number(a.balance),
+      direction: 'in',
       icon: ArrowDownLeft,
     }))
 
@@ -182,6 +183,7 @@ async function getTimelineEvents(
       title: `CxP - ${a.description}`,
       subtitle: a.status,
       amount: Number(a.balance),
+      direction: 'out',
       icon: ArrowUpRight,
     }))
 
