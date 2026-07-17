@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, ArrowDownLeft, ArrowUpRight, Loader2, Check } from 'lucide-react'
 import { EVENT_TYPES, PAYMENT_TYPES } from '@/lib/constants'
@@ -29,7 +29,19 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
   const [isPending, startTransition] = useTransition()
   const [success, setSuccess] = useState(false)
   const [transactionId, setTransactionId] = useState('')
+  const [resolvedRegisterId, setResolvedRegisterId] = useState<string | null>(registerId || null)
   const router = useRouter()
+
+  useEffect(() => {
+    if (!registerId) {
+      fetch('/api/register/default')
+        .then(res => res.json())
+        .then(data => {
+          if (data.registerId) setResolvedRegisterId(data.registerId)
+        })
+        .catch(() => {})
+    }
+  }, [registerId])
 
   const [form, setForm] = useState<FormData>({
     eventType: null,
@@ -90,7 +102,10 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
             movementDate: form.movementDate,
             description: form.description || getEventLabel(),
             sourceType: 'cash_register',
-            sourceId: registerId || 'default',
+            sourceId: resolvedRegisterId || registerId || 'default',
+            contactName: form.contactName || null,
+            paymentType: form.paymentType,
+            notes: form.notes || null,
             createdBy: 'default-user',
             companyId: 'default',
             status: form.status,
