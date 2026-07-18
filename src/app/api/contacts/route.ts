@@ -30,9 +30,6 @@ export async function GET(request: Request) {
           orderBy: { createdAt: 'desc' },
           take: 5,
         },
-        agreements: {
-          orderBy: { createdAt: 'desc' },
-        },
       },
     })
 
@@ -86,7 +83,6 @@ export async function POST(request: Request) {
         sales: true,
         purchases: true,
         expenses: true,
-        agreements: true,
       },
     })
 

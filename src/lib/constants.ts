@@ -214,8 +214,6 @@ export const SIDEBAR_ITEMS = [
   { section: 'Patrimonio' },
   { label: 'Activos', href: '/assets', icon: 'Box' },
   { label: 'Documentos', href: '/documents', icon: 'FileText' },
-  { section: 'Contratos' },
-  { label: 'Acuerdos', href: '/agreements', icon: 'Handshake' },
   { section: 'Sistema' },
   { label: 'Auditoría', href: '/audit', icon: 'ShieldCheck' },
   { label: 'Reportes', href: '/reports', icon: 'BarChart3' },
