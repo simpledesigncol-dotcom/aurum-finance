@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { ArrowUpRight, Plus, Pencil, Trash2, CircleDollarSign } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { ArrowUpRight, Plus, Pencil, Trash2, CircleDollarSign, Camera, FileText, Loader2, X } from 'lucide-react'
 import Modal from '@/components/ui/modal'
 import ConfirmDialog from '@/components/ui/confirm-dialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -69,6 +69,11 @@ export default function PayablesPage() {
   const [paymentModal, setPaymentModal] = useState<AP | null>(null)
   const [paymentForm, setPaymentForm] = useState(emptyPayment)
   const [paying, setPaying] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadedDocUrl, setUploadedDocUrl] = useState<string | null>(null)
+  const [uploadedDocName, setUploadedDocName] = useState<string | null>(null)
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -92,6 +97,9 @@ export default function PayablesPage() {
     setEditing(null)
     setForm(emptyForm)
     setFormError('')
+    setSelectedFile(null)
+    setUploadedDocUrl(null)
+    setUploadedDocName(null)
     setModalOpen(true)
   }
 
@@ -106,6 +114,18 @@ export default function PayablesPage() {
       notes: ap.notes || '',
     })
     setFormError('')
+    setSelectedFile(null)
+    setUploadedDocUrl(null)
+    setUploadedDocName(null)
+    fetch(`/api/documents?referenceType=accounts_payable&referenceId=${ap.id}`)
+      .then(res => res.json())
+      .then(docs => {
+        if (docs.length > 0) {
+          setUploadedDocUrl(docs[0].fileUrl)
+          setUploadedDocName(docs[0].name)
+        }
+      })
+      .catch(() => {})
     setModalOpen(true)
   }
 
@@ -152,6 +172,9 @@ export default function PayablesPage() {
           setFormError(err.error || `Error ${res.status}`)
           return
         }
+        if (selectedFile) {
+          await uploadDocument(editing.id, selectedFile)
+        }
       } else {
         const res = await fetch('/api/accounts-payable', {
           method: 'POST',
@@ -163,6 +186,10 @@ export default function PayablesPage() {
           setFormError(err.error || `Error ${res.status}`)
           return
         }
+        const created = await res.json()
+        if (selectedFile) {
+          await uploadDocument(created.id, selectedFile)
+        }
       }
       setModalOpen(false)
       fetchAccounts()
@@ -170,6 +197,27 @@ export default function PayablesPage() {
       setFormError('Error de conexion. Intente de nuevo.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const uploadDocument = async (apId: string, file: File) => {
+    setUploadingFile(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('documentType', 'invoice')
+      formData.append('referenceType', 'accounts_payable')
+      formData.append('referenceId', apId)
+      const res = await fetch('/api/documents/upload', { method: 'POST', body: formData })
+      if (res.ok) {
+        const doc = await res.json()
+        setUploadedDocUrl(doc.fileUrl)
+        setUploadedDocName(doc.name)
+      }
+    } catch {
+      console.error('Error uploading document')
+    } finally {
+      setUploadingFile(false)
     }
   }
 
@@ -333,13 +381,35 @@ export default function PayablesPage() {
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Notas</label>
               <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={inputClass + ' min-h-[72px] resize-none'} placeholder="Notas adicionales..." />
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Factura</label>
+              <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="hidden" />
+              {uploadedDocUrl && !selectedFile ? (
+                <div className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30">
+                  <FileText size={14} className="text-blue shrink-0" />
+                  <span className="text-xs truncate flex-1">{uploadedDocName}</span>
+                  <a href={uploadedDocUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue font-medium hover:underline shrink-0">Ver</a>
+                </div>
+              ) : selectedFile ? (
+                <div className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30">
+                  <FileText size={14} className="text-success shrink-0" />
+                  <span className="text-xs truncate flex-1">{selectedFile.name}</span>
+                  <button onClick={() => setSelectedFile(null)} className="text-muted-foreground hover:text-danger transition-colors shrink-0"><X size={14} /></button>
+                </div>
+              ) : null}
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:border-blue/40 hover:text-blue transition-colors">
+                <Camera size={13} />
+                {uploadingFile ? 'Subiendo...' : selectedFile ? 'Cambiar foto' : 'Tomar foto o seleccionar'}
+              </button>
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setModalOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
                 Cancelar
               </button>
               {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
-              <button type="submit" disabled={saving || !form.description.trim() || !form.originalAmount || !form.issueDate || !form.dueDate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50">
-                {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
+              <button type="submit" disabled={saving || uploadingFile || !form.description.trim() || !form.originalAmount || !form.issueDate || !form.dueDate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50">
+                {saving || uploadingFile ? <Loader2 size={12} className="animate-spin" /> : null}
+                {saving ? 'Guardando...' : uploadingFile ? 'Subiendo factura...' : editing ? 'Actualizar' : 'Crear'}
               </button>
             </div>
           </form>
