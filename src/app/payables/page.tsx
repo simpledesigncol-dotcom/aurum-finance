@@ -328,8 +328,8 @@ export default function PayablesPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {!overdue && ap.status !== 'paid' && (
-                      <button onClick={() => { setPaymentModal(ap); setPaymentForm(emptyPayment) }} className="w-7 h-7 rounded-lg hover:bg-success/[0.06] flex items-center justify-center text-muted-foreground hover:text-success transition-colors" title="Pagar">
+                    {ap.status !== 'paid' && (
+                      <button onClick={() => { setPaymentModal(ap); setPaymentForm(emptyPayment) }} className="w-7 h-7 rounded-lg hover:bg-success/[0.06] flex items-center justify-center text-muted-foreground hover:text-success transition-colors" title="Abonar">
                         <CircleDollarSign size={13} />
                       </button>
                     )}

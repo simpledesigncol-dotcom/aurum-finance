@@ -199,7 +199,33 @@ async function createEntityForMovement(
     }
 
     if (movementType === 'ar_payment' || (movementType === 'ar_payment' && direction === 'in')) {
-      refType = 'ar_payment'
+      const sale = await prisma.sale.create({
+        data: {
+          companyId,
+          contactId,
+          saleDate: movementDate,
+          status: 'completed',
+          paymentType: paymentType || 'cash',
+          subtotal: amount,
+          total: amount,
+          amountPaid: amount,
+          source: 'manual',
+          createdBy,
+        },
+      })
+
+      await prisma.salePayment.create({
+        data: {
+          saleId: sale.id,
+          amount,
+          paymentDate: movementDate,
+          financialMovementId: movementId,
+          createdBy,
+        },
+      })
+
+      refType = 'sale'
+      refId = sale.id
     }
   } catch (err) {
     console.error(`Error creating entity for movementType=${movementType}:`, err)
