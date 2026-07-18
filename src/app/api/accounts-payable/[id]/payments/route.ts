@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { generateTransactionId } from '@/lib/transactions'
+import { getDefaultRegisterId } from '@/lib/registers'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,7 +36,7 @@ export async function POST(
   try {
     const { id } = await params
     const body = await request.json()
-    const { amount, paymentDate, paymentMethodId, notes } = body
+    const { amount, paymentDate, paymentMethodId, sourceType, sourceId, notes } = body
 
     if (!amount) {
       return NextResponse.json(
@@ -53,6 +54,9 @@ export async function POST(
     }
 
     const transactionId = await generateTransactionId()
+    const payDate = paymentDate ? new Date(paymentDate) : new Date()
+    const srcType = sourceType || 'cash_register'
+    const srcId = sourceId || (srcType === 'cash_register' ? await getDefaultRegisterId() : sourceId)
 
     const movement = await prisma.financialMovement.create({
       data: {
@@ -61,11 +65,12 @@ export async function POST(
         movementType: 'expense',
         amount,
         direction: 'out',
-        movementDate: paymentDate ? new Date(paymentDate) : new Date(),
-        sourceType: 'accounts_payable',
-        sourceId: id,
+        movementDate: payDate,
+        sourceType: srcType,
+        sourceId: srcId,
         contactId: ap.contactId,
         description: `Pago cuenta por pagar: ${ap.description}`,
+        notes: notes || null,
         createdBy: 'default-user',
       },
     })
@@ -75,7 +80,7 @@ export async function POST(
         accountsPayableId: id,
         amount,
         paymentMethodId: paymentMethodId || null,
-        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+        paymentDate: payDate,
         financialMovementId: movement.id,
         notes: notes || null,
         createdBy: 'default-user',

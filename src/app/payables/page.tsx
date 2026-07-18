@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ArrowUpRight, Plus, Pencil, Trash2, CircleDollarSign, Camera, FileText, Loader2, X } from 'lucide-react'
+import { ArrowUpRight, Plus, Pencil, Trash2, CircleDollarSign, Camera, FileText, Loader2, X, Banknote, Building2, ChevronDown } from 'lucide-react'
 import Modal from '@/components/ui/modal'
 import ConfirmDialog from '@/components/ui/confirm-dialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -43,9 +43,26 @@ const emptyForm = {
   notes: '',
 }
 
+interface PaymentMethod {
+  id: string
+  name: string
+  type: string
+}
+
+interface BankAccount {
+  id: string
+  bankName: string
+  accountType: string | null
+  accountNumber: string | null
+}
+
 const emptyPayment = {
   amount: '',
   paymentDate: new Date().toISOString().split('T')[0],
+  paymentMethodId: '',
+  sourceType: 'cash_register',
+  sourceId: '',
+  notes: '',
 }
 
 function isOverdue(ap: AP): boolean {
@@ -69,6 +86,8 @@ export default function PayablesPage() {
   const [paymentModal, setPaymentModal] = useState<AP | null>(null)
   const [paymentForm, setPaymentForm] = useState(emptyPayment)
   const [paying, setPaying] = useState(false)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadedDocUrl, setUploadedDocUrl] = useState<string | null>(null)
   const [uploadedDocName, setUploadedDocName] = useState<string | null>(null)
@@ -88,6 +107,24 @@ export default function PayablesPage() {
   }, [])
 
   useEffect(() => { fetchAccounts() }, [fetchAccounts])
+
+  const fetchPaymentMethods = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings/payment-methods')
+      const data = await res.json()
+      setPaymentMethods(Array.isArray(data) ? data : [])
+    } catch {}
+  }, [])
+
+  const fetchBankAccounts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bank-accounts')
+      const data = await res.json()
+      setBankAccounts(Array.isArray(data) ? data : [])
+    } catch {}
+  }, [])
+
+  useEffect(() => { fetchPaymentMethods(); fetchBankAccounts() }, [fetchPaymentMethods, fetchBankAccounts])
 
   const totalPending = accounts.filter((a) => a.status !== 'paid').reduce((s, a) => s + a.balance, 0)
   const overdueCount = accounts.filter(isOverdue).length
@@ -244,6 +281,10 @@ export default function PayablesPage() {
         body: JSON.stringify({
           amount: parseFloat(paymentForm.amount),
           paymentDate: paymentForm.paymentDate,
+          paymentMethodId: paymentForm.paymentMethodId || null,
+          sourceType: paymentForm.sourceType,
+          sourceId: paymentForm.sourceType === 'bank_account' ? paymentForm.sourceId : 'default',
+          notes: paymentForm.notes || null,
         }),
       })
       setPaymentModal(null)
@@ -417,7 +458,7 @@ export default function PayablesPage() {
       )}
 
       {paymentModal && (
-        <Modal title="Registrar pago" subtitle={`Pago: ${paymentModal.description}`} onClose={() => setPaymentModal(null)}>
+        <Modal title="Registrar abono" subtitle={`Pago a: ${paymentModal.description}`} onClose={() => setPaymentModal(null)}>
           <form onSubmit={handlePayment} className="p-4 sm:p-5 space-y-4">
             <div className="bg-muted/40 rounded-lg p-3">
               <p className="text-xs text-muted-foreground">Saldo pendiente</p>
@@ -431,12 +472,51 @@ export default function PayablesPage() {
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Fecha de pago</label>
               <input type="date" value={paymentForm.paymentDate} onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })} className={inputClass} />
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Método de pago</label>
+              <div className="relative">
+                <select value={paymentForm.paymentMethodId} onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethodId: e.target.value })} className={`${inputClass} appearance-none pr-8`}>
+                  <option value="">Seleccionar método</option>
+                  {paymentMethods.map((pm) => (
+                    <option key={pm.id} value={pm.id}>{pm.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Sale de</label>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setPaymentForm({ ...paymentForm, sourceType: 'cash_register', sourceId: '' })} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${paymentForm.sourceType === 'cash_register' ? 'border-blue/40 bg-blue/[0.06] text-blue' : 'border-border hover:bg-muted text-muted-foreground'}`}>
+                  <Banknote size={13} /> Caja
+                </button>
+                <button type="button" onClick={() => setPaymentForm({ ...paymentForm, sourceType: 'bank_account', sourceId: '' })} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${paymentForm.sourceType === 'bank_account' ? 'border-blue/40 bg-blue/[0.06] text-blue' : 'border-border hover:bg-muted text-muted-foreground'}`}>
+                  <Building2 size={13} /> Cuenta bancaria
+                </button>
+              </div>
+            </div>
+            {paymentForm.sourceType === 'bank_account' && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Cuenta bancaria</label>
+                <div className="relative">
+                  <select value={paymentForm.sourceId} onChange={(e) => setPaymentForm({ ...paymentForm, sourceId: e.target.value })} className={`${inputClass} appearance-none pr-8`}>
+                    <option value="">Seleccionar cuenta</option>
+                    {bankAccounts.map((ba) => (
+                      <option key={ba.id} value={ba.id}>{ba.bankName} {ba.accountNumber ? `• ${ba.accountNumber}` : ''}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Notas</label>
+              <textarea value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} className={`${inputClass} min-h-[60px] resize-none`} placeholder="Notas del pago..." />
+            </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setPaymentModal(null)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
-                Cancelar
-              </button>
+              <button type="button" onClick={() => setPaymentModal(null)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">Cancelar</button>
               <button type="submit" disabled={paying || !paymentForm.amount} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50">
-                {paying ? 'Registrando...' : 'Registrar pago'}
+                {paying ? 'Registrando...' : 'Registrar abono'}
               </button>
             </div>
           </form>
