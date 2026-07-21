@@ -5,7 +5,7 @@ import { getTotalCashBalance, getTotalBankBalance } from '@/lib/balances'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft,
-  AlertTriangle, CreditCard, Receipt
+  AlertTriangle, CreditCard, Receipt,
 } from 'lucide-react'
 import Link from 'next/link'
 import PeriodFilter from '@/components/period-filter'
@@ -87,6 +87,21 @@ async function getDashboardData(period: string = 'month') {
     upcoming: [] as { id: string; name: string; type: string; balance: number; dueDate: string; priority: string }[],
   }
 
+  const categoryExpenses: { name: string; total: number; count: number }[] = []
+  const expenseMap = new Map<string, { total: number; count: number }>()
+  for (const m of currentMovements) {
+    if (m.direction !== 'out') continue
+    const key = m.category?.name || 'Sin categoría'
+    const existing = expenseMap.get(key) || { total: 0, count: 0 }
+    existing.total += Number(m.amount)
+    existing.count++
+    expenseMap.set(key, existing)
+  }
+  for (const [name, val] of expenseMap) {
+    categoryExpenses.push({ name, total: val.total, count: val.count })
+  }
+  categoryExpenses.sort((a, b) => b.total - a.total)
+
   for (const o of allObligations) {
     const dueDate = o.nextDueDate || o.endDate
     if (!dueDate) continue
@@ -154,6 +169,8 @@ async function getDashboardData(period: string = 'month') {
     obligationBalance: Number(activeObligations._sum.balance || 0), obligationCount: activeObligations._count,
     overdueCount, obligationReminders,
     recentMovements: currentMovements.slice(-10).reverse(), barData,
+    projected: totalCash + totalBank + Number(pendingAR._sum.balance || 0) - Number(pendingAP._sum.balance || 0) - Number(activeObligations._sum.balance || 0),
+    categoryExpenses,
   }
 }
 
@@ -304,6 +321,66 @@ async function DashboardContent({ period }: { period: string }) {
               </div>
             </div>
           </div>
+
+          {/* Cash flow projection */}
+          <div className="bg-card rounded-xl border border-border p-5 animate-slide-up">
+            <h3 className="font-semibold text-sm mb-4">Proyección</h3>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between py-0.5">
+                <span className="text-xs text-muted-foreground">Liquidez actual</span>
+                <span className="text-xs font-semibold tabular-nums">{formatCurrency(data.totalAssets)}</span>
+              </div>
+              <div className="flex items-center justify-between py-0.5">
+                <span className="text-xs text-muted-foreground">+ CxC por cobrar</span>
+                <span className="text-xs font-semibold tabular-nums text-success">+{formatCurrency(data.pendingAR)}</span>
+              </div>
+              <div className="flex items-center justify-between py-0.5">
+                <span className="text-xs text-muted-foreground">- CxP por pagar</span>
+                <span className="text-xs font-semibold tabular-nums text-danger">-{formatCurrency(data.pendingAP)}</span>
+              </div>
+              <div className="flex items-center justify-between py-0.5">
+                <span className="text-xs text-muted-foreground">- Obligaciones</span>
+                <span className="text-xs font-semibold tabular-nums text-danger">-{formatCurrency(data.obligationBalance)}</span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="flex items-center justify-between py-0.5">
+                <span className="text-xs font-medium">Disponible estimado</span>
+                <span className={`text-xs font-bold tabular-nums ${data.projected >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(data.projected)}</span>
+              </div>
+            </div>
+          </div>
+
+          {data.pendingAP > data.pendingAR && (
+            <div className="flex items-center gap-3 bg-warning/[0.04] border border-warning/10 rounded-xl p-3.5 animate-slide-up">
+              <AlertTriangle size={15} className="text-warning shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-warning">Debes más de lo que te deben</p>
+                <p className="text-[11px] text-warning/60">CxP supera a CxC en {formatCurrency(data.pendingAP - data.pendingAR)}</p>
+              </div>
+            </div>
+          )}
+
+          {data.categoryExpenses.length > 0 && (
+            <div className="bg-card rounded-xl border border-border p-5 animate-slide-up">
+              <h3 className="font-semibold text-sm mb-3">Gastos por categoría</h3>
+              <div className="space-y-2.5">
+                {data.categoryExpenses.slice(0, 5).map((cat) => {
+                  const pct = data.monthlyExpenses > 0 ? (cat.total / data.monthlyExpenses) * 100 : 0
+                  return (
+                    <div key={cat.name}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-muted-foreground truncate">{cat.name}</span>
+                        <span className="text-xs font-semibold tabular-nums">{formatCurrency(cat.total)}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-danger/50 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {data.overdueCount > 0 && (
             <Link href="/receivables" className="flex items-center gap-3 bg-danger/[0.04] border border-danger/10 rounded-xl p-3.5 hover:bg-danger/[0.07] transition-colors animate-slide-up">
