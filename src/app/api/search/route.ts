@@ -15,14 +15,15 @@ interface SearchResult {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const query = searchParams.get('q')?.trim()
+  try {
+    const { searchParams } = new URL(request.url)
+    const query = searchParams.get('q')?.trim()
 
-  if (!query || query.length < 2) {
-    return NextResponse.json({ results: [], total: 0 })
-  }
+    if (!query || query.length < 2) {
+      return NextResponse.json({ results: [], total: 0 })
+    }
 
-  const term = `%${query}%`
+    const term = `%${query}%`
   const results: SearchResult[] = []
 
   const [movements, sales, expenses, purchases, contacts, obligations, ars, aps, documents] = await Promise.all([
@@ -228,4 +229,11 @@ export async function GET(request: Request) {
     results: results.slice(0, 20),
     total: results.length,
   })
+  } catch (error) {
+    console.error('Error searching:', error)
+    return NextResponse.json(
+      { error: 'Error al buscar' },
+      { status: 500 }
+    )
+  }
 }

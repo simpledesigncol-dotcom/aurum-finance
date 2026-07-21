@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { BarChart3, TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, Download, Receipt } from 'lucide-react'
+import { TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, Download, Receipt } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface Movement {

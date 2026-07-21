@@ -7,48 +7,49 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
-  const contact = await prisma.contact.findUnique({
-    where: { id },
-    include: {
-      financialMovements: {
-        orderBy: { movementDate: 'desc' },
-      },
-      sales: {
-        orderBy: { createdAt: 'desc' },
-        include: {
-          items: true,
-          payments: true,
+  try {
+    const { id } = await params
+    const contact = await prisma.contact.findUnique({
+      where: { id },
+      include: {
+        financialMovements: {
+          orderBy: { movementDate: 'desc' },
+        },
+        sales: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            items: true,
+            payments: true,
+          },
+        },
+        purchases: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            items: true,
+            payments: true,
+          },
+        },
+        expenses: {
+          orderBy: { createdAt: 'desc' },
         },
       },
-      purchases: {
-        orderBy: { createdAt: 'desc' },
-        include: {
-          items: true,
-          payments: true,
-        },
-      },
-      expenses: {
-        orderBy: { createdAt: 'desc' },
-      },
-      agreements: {
-        orderBy: { createdAt: 'desc' },
-        include: {
-          items: true,
-          settlements: true,
-        },
-      },
-    },
-  })
+    })
 
-  if (!contact) {
+    if (!contact) {
+      return NextResponse.json(
+        { error: 'Contacto no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json(contact)
+  } catch (error) {
+    console.error('Error fetching contact:', error)
     return NextResponse.json(
-      { error: 'Contacto no encontrado' },
-      { status: 404 }
+      { error: 'Error al obtener el contacto' },
+      { status: 500 }
     )
   }
-
-  return NextResponse.json(contact)
 }
 
 export async function PUT(
@@ -78,7 +79,6 @@ export async function PUT(
         sales: true,
         purchases: true,
         expenses: true,
-        agreements: true,
       },
     })
 

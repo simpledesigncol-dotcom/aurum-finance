@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { Users, Plus, Pencil, Trash2, Search } from 'lucide-react'
 import Modal from '@/components/ui/modal'
 import ConfirmDialog from '@/components/ui/confirm-dialog'
-import { formatDate } from '@/lib/utils'
 
 interface Supplier {
   id: string

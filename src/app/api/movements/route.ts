@@ -106,7 +106,7 @@ async function createEntityForMovement(
       await prisma.accountsPayable.create({
         data: {
           companyId,
-          contactId: contactId || 'default',
+          contactId: contactId || null,
           description: description || 'Préstamo recibido',
           originalAmount: amount,
           balance: amount,
