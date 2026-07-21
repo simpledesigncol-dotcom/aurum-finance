@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { generateTransactionId } from '@/lib/transactions'
+import { getDefaultRegisterId } from '@/lib/registers'
 
 export const dynamic = 'force-dynamic'
 
@@ -234,6 +235,40 @@ async function createEntityForMovement(
   return { referenceType: refType, referenceId: refId }
 }
 
+async function resolvePaymentSource(
+  paymentType: string | null,
+  companyId: string
+): Promise<{ sourceType: string; sourceId: string }> {
+  const routing: Record<string, { sourceType: string; bankName?: string }> = {
+    cash: { sourceType: 'cash_register' },
+    nequi: { sourceType: 'bank_account', bankName: 'Nequi' },
+    daviplata: { sourceType: 'bank_account', bankName: 'Daviplata' },
+    tc: { sourceType: 'bank_account', bankName: 'Bancolombia' },
+    td: { sourceType: 'bank_account', bankName: 'Bancolombia' },
+    transfer: { sourceType: 'bank_account', bankName: 'Bancolombia' },
+    credit: { sourceType: 'cash_register' },
+    partial: { sourceType: 'cash_register' },
+  }
+
+  const route = paymentType ? routing[paymentType] : null
+  if (!route) return { sourceType: 'cash_register', sourceId: await getDefaultRegisterId() }
+
+  if (route.sourceType === 'cash_register') {
+    return { sourceType: 'cash_register', sourceId: await getDefaultRegisterId() }
+  }
+
+  const account = await prisma.bankAccount.findFirst({
+    where: { bankName: route.bankName, companyId },
+    select: { id: true },
+  })
+  if (account) return { sourceType: 'bank_account', sourceId: account.id }
+
+  const newAccount = await prisma.bankAccount.create({
+    data: { companyId, bankName: route.bankName!, accountType: 'savings' },
+  })
+  return { sourceType: 'bank_account', sourceId: newAccount.id }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -254,7 +289,7 @@ export async function POST(request: Request) {
       status,
     } = body
 
-    if (!movementType || !amount || !direction || !sourceType || !sourceId || !createdBy) {
+    if (!movementType || !amount || !direction || !createdBy) {
       return NextResponse.json(
         { error: 'Campos requeridos faltantes' },
         { status: 400 }
@@ -267,6 +302,11 @@ export async function POST(request: Request) {
 
     const resolvedContactId =
       contactId || (await resolveOrCreateContact(contactName, movementTypeToContactType(movementType), companyId))
+
+    const { sourceType: resolvedSourceType, sourceId: resolvedSourceId } = await resolvePaymentSource(
+      paymentType || null,
+      companyId
+    )
 
     const transactionId = await generateTransactionId()
 
@@ -281,8 +321,8 @@ export async function POST(request: Request) {
         movementDate: parsedDate,
         categoryId: categoryId || null,
         description,
-        sourceType,
-        sourceId,
+        sourceType: resolvedSourceType,
+        sourceId: resolvedSourceId,
         contactId: resolvedContactId,
         notes: notes || null,
         createdBy,
