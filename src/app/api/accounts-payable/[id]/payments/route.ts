@@ -56,7 +56,9 @@ export async function POST(
     const transactionId = await generateTransactionId()
     const payDate = paymentDate ? new Date(paymentDate) : new Date()
     const srcType = sourceType || 'cash_register'
-    const srcId = sourceId || (srcType === 'cash_register' ? await getDefaultRegisterId() : sourceId)
+    const srcId = srcType === 'cash_register'
+      ? (sourceId && sourceId !== 'default' ? sourceId : await getDefaultRegisterId())
+      : sourceId || ''
 
     const movement = await prisma.financialMovement.create({
       data: {
