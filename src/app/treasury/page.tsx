@@ -135,7 +135,21 @@ export default function TreasuryPage() {
 
   const handleSaveArqueo = async () => {
     setSavingArqueo(true)
-    await new Promise(r => setTimeout(r, 500))
+    try {
+      const cashRow = arqueoRows[0]
+      if (cashRow && cashRow.name === 'Efectivo (Caja)') {
+        const physicalCash = parseFloat(cashRow.physical) || 0
+        const diff = physicalCash - cashRow.expected
+        const reg = await (await fetch('/api/register/default')).json()
+        if (reg.registerId) {
+          await fetch(`/api/cash-register/${reg.registerId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ physicalCount: physicalCash, difference: diff }),
+          })
+        }
+      }
+    } catch {}
     setSavingArqueo(false)
     setArqueoDone(true)
   }
