@@ -46,18 +46,21 @@ export default function TreasuryPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [banksRes, cashRes, movementsRes] = await Promise.all([
+        const [banksRes, cashRes, movementsRes, registerRes] = await Promise.all([
           fetch('/api/bank-accounts'),
           fetch('/api/movements?sourceType=cash_register&limit=9999'),
           fetch('/api/movements?limit=50'),
+          fetch('/api/register/default'),
         ])
 
         const banksData = await banksRes.json()
         const cashData = await cashRes.json()
         const movementsData = await movementsRes.json()
+        const registerData = await registerRes.json()
 
         setBankAccounts(banksData)
 
+        const openingBalance = registerData.openingBalance || 0
         const cashMovements = (cashData.movements || cashData).filter((m: Movement) => m.status === 'confirmed')
         const cashIn = cashMovements
           .filter((m: Movement) => m.direction === 'in')
@@ -65,7 +68,7 @@ export default function TreasuryPage() {
         const cashOut = cashMovements
           .filter((m: Movement) => m.direction === 'out')
           .reduce((sum: number, m: Movement) => sum + m.amount, 0)
-        setCashBalance(cashIn - cashOut)
+        setCashBalance(openingBalance + cashIn - cashOut)
 
         setMovements(movementsData.movements || movementsData)
       } catch {
