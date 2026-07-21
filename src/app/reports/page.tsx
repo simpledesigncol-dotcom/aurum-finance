@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, Download, Receipt } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, Download, Receipt, FileSpreadsheet, FileText } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import * as XLSX from 'xlsx'
 
 interface Movement {
   id: string
@@ -54,6 +55,16 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('month')
   const [activeChart, setActiveChart] = useState<'cashflow' | 'categories' | 'trend'>('cashflow')
+  const [exportOpen, setExportOpen] = useState(false)
+  const exportRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setExportOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   const fetchMovements = useCallback(async () => {
     try {
@@ -158,6 +169,62 @@ export default function ReportsPage() {
   const avgExpensePerTransaction = expenseCount > 0 ? totalExpenses / expenseCount : 0
   const avgIncomePerTransaction = incomeCount > 0 ? totalIncome / incomeCount : 0
 
+  const periodLabel = periods.find(p => p.id === period)?.label || ''
+
+  const exportExcel = () => {
+    const summaryData = [
+      ['Aurum Finance - Reporte ' + periodLabel],
+      [],
+      ['Indicador', 'Valor'],
+      ['Ingresos', totalIncome],
+      ['Gastos', totalExpenses],
+      ['Flujo neto', netFlow],
+      ['Transacciones ingresos', incomeCount],
+      ['Transacciones gastos', expenseCount],
+      ['Promedio ingreso', avgIncomePerTransaction],
+      ['Promedio gasto', avgExpensePerTransaction],
+      ['% Gasto/Ingreso', expensePercent.toFixed(1) + '%'],
+    ]
+
+    const movementsData = [
+      ['Fecha', 'Tipo', 'Descripción', 'Categoría', 'Contacto', 'Dirección', 'Monto'],
+      ...periodMovements.map(m => [
+        formatDate(m.movementDate),
+        m.movementType,
+        m.description || '',
+        m.category?.name || '',
+        m.contact?.name || '',
+        m.direction === 'in' ? 'Ingreso' : 'Egreso',
+        m.direction === 'in' ? m.amount : -m.amount,
+      ]),
+    ]
+
+    const categoriesData = [
+      ['Categoría', 'Total', 'Transacciones'],
+      ...Array.from(categoryMap.values()).sort((a, b) => b.total - a.total).map(c => [c.name, c.total, c.count]),
+    ]
+
+    const wb = XLSX.utils.book_new()
+    const ws1 = XLSX.utils.aoa_to_sheet(summaryData)
+    const ws2 = XLSX.utils.aoa_to_sheet(movementsData)
+    const ws3 = XLSX.utils.aoa_to_sheet(categoriesData)
+
+    ws1['!cols'] = [{ wch: 30 }, { wch: 20 }]
+    ws2['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 16 }]
+    ws3['!cols'] = [{ wch: 30 }, { wch: 16 }, { wch: 16 }]
+
+    XLSX.utils.book_append_sheet(wb, ws1, 'Resumen')
+    XLSX.utils.book_append_sheet(wb, ws2, 'Movimientos')
+    XLSX.utils.book_append_sheet(wb, ws3, 'Categorías')
+    XLSX.writeFile(wb, `Reporte_${periodLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    setExportOpen(false)
+  }
+
+  const exportPdf = () => {
+    setExportOpen(false)
+    window.print()
+  }
+
   if (loading) {
     return (
       <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-5 animate-fade-in">
@@ -179,32 +246,74 @@ export default function ReportsPage() {
 
   return (
     <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-5 animate-fade-in">
+      <style>{`
+        @media print {
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; }
+          .no-print { display: none !important; }
+          .print-only { display: block !important; }
+          .print-header { text-align: center; padding: 20px 0; border-bottom: 2px solid #2563eb; margin-bottom: 24px; }
+          .print-header h1 { font-size: 22px; font-weight: 700; color: #111; margin: 0; }
+          .print-header p { font-size: 13px; color: #666; margin: 4px 0 0; }
+          .print-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+          .print-summary-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; text-align: center; }
+          .print-summary-item .label { font-size: 10px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em; }
+          .print-summary-item .value { font-size: 18px; font-weight: 700; margin-top: 4px; }
+          .print-summary-item .sub { font-size: 10px; color: #9ca3af; margin-top: 2px; }
+          .print-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px; }
+          .print-table th { background: #f3f4f6; padding: 8px 10px; text-align: left; font-weight: 600; border: 1px solid #e5e7eb; }
+          .print-table td { padding: 6px 10px; border: 1px solid #e5e7eb; }
+          .print-table tr:nth-child(even) { background: #f9fafb; }
+          .print-footer { text-align: center; font-size: 10px; color: #9ca3af; margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+          @page { margin: 20mm 15mm; }
+          .print-section-title { font-size: 14px; font-weight: 600; margin: 16px 0 8px; }
+        }
+        .print-only { display: none; }
+      `}</style>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Reportes</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Análisis y reportes financieros</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-muted rounded-lg p-[3px]">
-            {periods.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setPeriod(p.id)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
-                  period === p.id
-                    ? 'bg-card text-foreground shadow-sm border border-border'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 relative" ref={exportRef}>
+            <div className="flex items-center bg-muted rounded-lg p-[3px]">
+              {periods.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setPeriod(p.id)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
+                    period === p.id
+                      ? 'bg-card text-foreground shadow-sm border border-border'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setExportOpen(!exportOpen)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors">
+              <Download size={13} />
+              Exportar
+            </button>
+            {exportOpen && (
+              <div className="absolute top-full right-0 mt-1 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                <button onClick={exportExcel} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium hover:bg-muted transition-colors text-left">
+                  <FileSpreadsheet size={15} className="text-success" />
+                  <div>
+                    <p className="text-sm">Excel</p>
+                    <p className="text-[10px] text-muted-foreground">Reporte completo en .xlsx</p>
+                  </div>
+                </button>
+                <div className="h-px bg-border" />
+                <button onClick={exportPdf} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium hover:bg-muted transition-colors text-left">
+                  <FileText size={15} className="text-danger" />
+                  <div>
+                    <p className="text-sm">PDF</p>
+                    <p className="text-[10px] text-muted-foreground">Versión para imprimir/enviar</p>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors text-muted-foreground">
-            <Download size={13} />
-            Exportar
-          </button>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -358,6 +467,65 @@ export default function ReportsPage() {
             ))
           )}
         </div>
+      </div>
+
+      {/* Print-only report */}
+      <div className="print-only">
+        <div className="print-header">
+          <h1>Aurum Finance — Reporte {periodLabel}</h1>
+          <p>Generado el {new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+
+        <div className="print-summary">
+          <div className="print-summary-item">
+            <div className="label">Ingresos</div>
+            <div className="value" style={{ color: '#16a34a' }}>{formatCurrency(totalIncome)}</div>
+            <div className="sub">{incomeCount} transacciones</div>
+          </div>
+          <div className="print-summary-item">
+            <div className="label">Gastos</div>
+            <div className="value" style={{ color: '#dc2626' }}>{formatCurrency(totalExpenses)}</div>
+            <div className="sub">{expenseCount} transacciones</div>
+          </div>
+          <div className="print-summary-item">
+            <div className="label">Flujo neto</div>
+            <div className="value" style={{ color: netFlow >= 0 ? '#16a34a' : '#dc2626' }}>{formatCurrency(netFlow)}</div>
+            <div className="sub">{expensePercent.toFixed(1)}% gasto/ingreso</div>
+          </div>
+          <div className="print-summary-item">
+            <div className="label">Promedio gasto</div>
+            <div className="value">{formatCurrency(avgExpensePerTransaction)}</div>
+            <div className="sub">Por transacción</div>
+          </div>
+        </div>
+
+        <div className="print-section-title">Movimientos del período</div>
+        <table className="print-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Descripción</th>
+              <th>Categoría</th>
+              <th>Contacto</th>
+              <th>Tipo</th>
+              <th style={{ textAlign: 'right' }}>Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {periodMovements.slice(0, 50).map(m => (
+              <tr key={m.id}>
+                <td>{formatDate(m.movementDate)}</td>
+                <td>{m.description || m.movementType}</td>
+                <td>{m.category?.name || '-'}</td>
+                <td>{m.contact?.name || '-'}</td>
+                <td>{m.direction === 'in' ? 'Ingreso' : 'Egreso'}</td>
+                <td style={{ textAlign: 'right', fontWeight: 600 }}>{m.direction === 'in' ? '' : '-'}{formatCurrency(m.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="print-footer">Aurum Finance — Reporte generado automáticamente</div>
       </div>
     </div>
   )
