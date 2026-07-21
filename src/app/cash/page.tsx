@@ -23,8 +23,7 @@ async function getCashData() {
   })
 
   const register = cashRegisters[0] || null
-  const calculatedBalance = register ? await getCashRegisterBalance(register.id) : 0
-  const currentBalance = register?.physicalCount != null ? Number(register.physicalCount) : calculatedBalance
+  const currentBalance = register ? await getCashRegisterBalance(register.id) : 0
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -46,7 +45,6 @@ async function getCashData() {
   return {
     register,
     currentBalance,
-    calculatedBalance,
     movements,
     todayIncome: totalIncome,
     todayExpenses: totalExpenses,
@@ -69,7 +67,7 @@ export default async function CashPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          title={data.register?.physicalCount != null ? 'Saldo real' : 'Balance actual'}
+          title="Balance actual"
           value={data.currentBalance}
           icon={<Wallet size={15} strokeWidth={1.8} />}
           variant="primary"
@@ -104,10 +102,7 @@ export default async function CashPage() {
               <div>
                 <p className="text-sm font-medium">{data.register.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  Balance inicial: {formatCurrency(Number(data.register.openingBalance))}
-                  {data.register.physicalCount != null && (
-                    <> · Calculado: {formatCurrency(data.calculatedBalance)}</>
-                  )}
+                  Balance inicial: {formatCurrency(Number(data.register.openingBalance))} · Calculado desde movimientos
                 </p>
               </div>
             </div>
@@ -119,9 +114,9 @@ export default async function CashPage() {
               }`}>
                 {data.register.status === 'open' ? 'Abierta' : 'Cerrada'}
               </span>
-              {data.register.physicalCount != null && data.register.difference != null && Number(data.register.difference) !== 0 && (
-                <span className={`text-xs tabular-nums font-medium ${Number(data.register.difference) > 0 ? 'text-success' : 'text-danger'}`}>
-                  Diferencia: {formatCurrency(Number(data.register.difference))}
+              {data.register.physicalCount != null && (
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  Fisico: {formatCurrency(Number(data.register.physicalCount))}
                 </span>
               )}
             </div>

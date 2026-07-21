@@ -3,10 +3,12 @@ import { prisma } from '@/lib/prisma'
 export async function getCashRegisterBalance(registerId: string): Promise<number> {
   const register = await prisma.cashRegister.findUnique({
     where: { id: registerId },
-    select: { openingBalance: true },
+    select: { openingBalance: true, physicalCount: true },
   })
 
   if (!register) throw new Error('Caja no encontrada')
+
+  if (register.physicalCount != null) return Number(register.physicalCount)
 
   const movements = await prisma.financialMovement.findMany({
     where: {
