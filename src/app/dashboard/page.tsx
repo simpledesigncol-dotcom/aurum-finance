@@ -56,7 +56,7 @@ async function getDashboardData(period: string = 'month') {
       select: { amount: true, direction: true, movementDate: true },
     }),
     prisma.financialMovement.findMany({
-      where: { status: 'confirmed' },
+      where: { status: 'confirmed', movementDate: { gte: new Date(now.getFullYear() - 1, now.getMonth(), 1) } },
       orderBy: { movementDate: 'asc' },
       select: { amount: true, direction: true, movementDate: true },
     }),

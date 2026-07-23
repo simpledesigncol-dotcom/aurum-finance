@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, Download, Receipt, FileSpreadsheet, FileText } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { useToast } from '@/components/ui/toast'
 import * as XLSX from 'xlsx'
 
 interface Movement {
@@ -57,6 +58,7 @@ export default function ReportsPage() {
   const [activeChart, setActiveChart] = useState<'cashflow' | 'categories' | 'trend'>('cashflow')
   const [exportOpen, setExportOpen] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -217,12 +219,14 @@ export default function ReportsPage() {
     XLSX.utils.book_append_sheet(wb, ws2, 'Movimientos')
     XLSX.utils.book_append_sheet(wb, ws3, 'Categorías')
     XLSX.writeFile(wb, `Reporte_${periodLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    toast('success', 'Excel descargado correctamente')
     setExportOpen(false)
   }
 
   const exportPdf = () => {
+    toast('info', 'Se abrirá el diálogo de impresión. Elige "Guardar como PDF"')
     setExportOpen(false)
-    window.print()
+    setTimeout(() => window.print(), 300)
   }
 
   if (loading) {
