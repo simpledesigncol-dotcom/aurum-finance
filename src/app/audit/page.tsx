@@ -147,18 +147,32 @@ export default async function AuditPage() {
           ) : (
             logs.map((log) => {
               const Icon = ENTITY_ICONS[log.entityType] || ShieldCheck
-              const actionColor = log.action === 'create' ? 'text-success' : log.action === 'delete' ? 'text-danger' : 'text-warning'
+              let iconColor = 'text-muted-foreground'
+              let bgColor = 'bg-muted'
+              if (log.entityType === 'financial_movement' && log.newValues) {
+                try {
+                  const data = JSON.parse(log.newValues)
+                  const dir = data.direction
+                  if (dir === 'in') { iconColor = 'text-success'; bgColor = 'bg-success/[0.08]' }
+                  else if (dir === 'out') { iconColor = 'text-danger'; bgColor = 'bg-danger/[0.08]' }
+                } catch {}
+              }
+              if (iconColor === 'text-muted-foreground') {
+                if (log.action === 'create') { iconColor = 'text-success'; bgColor = 'bg-success/[0.08]' }
+                else if (log.action === 'delete') { iconColor = 'text-danger'; bgColor = 'bg-danger/[0.08]' }
+                else { iconColor = 'text-warning'; bgColor = 'bg-warning/[0.08]' }
+              }
               const diff = formatDiff(log)
               return (
                 <div key={log.id} className="px-5 py-3 hover:bg-muted/40 transition-colors duration-150">
                   <div className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${actionColor.replace('text-', 'bg-')}/[0.08]`}>
-                      <Icon size={14} className={actionColor} strokeWidth={1.8} />
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bgColor}`}>
+                      <Icon size={14} className={iconColor} strokeWidth={1.8} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-medium truncate">
-                          <span className={actionColor}>{ACTION_LABELS[log.action] || log.action}</span>
+                          <span className={`font-medium ${iconColor}`}>{ACTION_LABELS[log.action] || log.action}</span>
                           {' '}
                           <span className="text-muted-foreground">{ENTITY_LABELS[log.entityType] || log.entityType.replace('_', ' ')}</span>
                         </p>

@@ -24,6 +24,7 @@ interface Sale {
   amountPaid: number
   balanceDue: number
   notes: string | null
+  operationsId: string | null
   contact: { id: string; name: string } | null
   items: { id: string; serviceName: string; quantity: number; unitPrice: number; subtotal: number }[]
   payments: { id: string; amount: number }[]
@@ -251,6 +252,7 @@ export default function SalesPage() {
                     </p>
                     <p className="text-xs text-muted-foreground min-w-0 truncate">
                       {sale.items.length} servicio{sale.items.length !== 1 ? 's' : ''} · {sale.paymentType}
+                      {sale.operationsId ? <span className="font-mono text-[10px] text-blue ml-1">OT#{sale.operationsId}</span> : null}
                     </p>
                   </div>
                   <div className="text-right shrink-0 hidden sm:block">
