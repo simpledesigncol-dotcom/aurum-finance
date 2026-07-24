@@ -41,6 +41,7 @@ const emptyForm = {
   issueDate: new Date().toISOString().split('T')[0],
   dueDate: '',
   notes: '',
+  filingLocation: '',
 }
 
 interface PaymentMethod {
@@ -142,13 +143,16 @@ export default function PayablesPage() {
 
   const openEdit = (ap: AP) => {
     setEditing(ap)
+    const notes = ap.notes || ''
+    const archivoMatch = notes.match(/^\[Archivo: (.+?)\]\s*\|\s*/)
     setForm({
       contactName: ap.contact?.name || '',
       description: ap.description,
       originalAmount: String(ap.originalAmount),
       issueDate: ap.issueDate.split('T')[0],
       dueDate: ap.dueDate.split('T')[0],
-      notes: ap.notes || '',
+      notes: archivoMatch ? notes.slice(archivoMatch[0].length) : notes,
+      filingLocation: archivoMatch ? archivoMatch[1] : '',
     })
     setFormError('')
     setSelectedFile(null)
@@ -189,13 +193,16 @@ export default function PayablesPage() {
 
     try {
       const contactId = form.contactName.trim() ? await findOrCreateContact(form.contactName) : null
+      const combinedNotes = form.filingLocation.trim()
+        ? `[Archivo: ${form.filingLocation.trim()}] | ${form.notes || ''}`
+        : form.notes || null
       const payload = {
         contactId,
         description: form.description,
         originalAmount: parseFloat(form.originalAmount),
         issueDate: form.issueDate,
         dueDate: form.dueDate,
-        notes: form.notes || null,
+        notes: combinedNotes,
       }
 
       if (editing) {
@@ -360,6 +367,9 @@ export default function PayablesPage() {
                     <p className="text-sm font-medium truncate">{ap.description}</p>
                     <p className="text-xs text-muted-foreground">
                       {ap.contact?.name || 'Sin contacto'} · Vence: <span className={overdue ? 'text-danger font-medium' : ''}>{formatDate(ap.dueDate)}</span>
+                      {ap.notes?.startsWith('[Archivo:') && (
+                        <span className="ml-2 text-[10px] text-blue">📁 {ap.notes.match(/^\[Archivo: (.+?)\]/)?.[1]}</span>
+                      )}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
@@ -421,6 +431,11 @@ export default function PayablesPage() {
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Notas</label>
               <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={inputClass + ' min-h-[72px] resize-none'} placeholder="Notas adicionales..." />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Archivado en</label>
+              <input type="text" value={form.filingLocation} onChange={(e) => setForm({ ...form, filingLocation: e.target.value })} className={inputClass} placeholder="Ej: Carpeta proveedores, factura #123" />
+              <p className="text-[10px] text-muted-foreground mt-1">Indica dónde se guardó la factura física</p>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Factura</label>
