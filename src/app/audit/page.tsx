@@ -42,6 +42,55 @@ const ENTITY_LABELS: Record<string, string> = {
   contact: 'Contacto',
 }
 
+const MOVEMENT_LABELS: Record<string, string> = {
+  sale: 'Venta',
+  expense: 'Gasto',
+  purchase: 'Compra',
+  income: 'Ingreso',
+  transfer: 'Transferencia',
+  obligation_received: 'Préstamo recibido',
+  obligation_payment: 'Pago deuda',
+  ar_payment: 'Pago recibido',
+  ap_payment: 'Pago proveedor',
+  capital_contribution: 'Aporte',
+  adjustment: 'Ajuste',
+}
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Efectivo',
+  nequi: 'Nequi',
+  daviplata: 'Daviplata',
+  tc: 'Tarjeta crédito',
+  td: 'Tarjeta débito',
+  transfer: 'Transferencia',
+  credit: 'Crédito',
+  partial: 'Parcial',
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  cash_register: 'Caja',
+  bank_account: 'Banco',
+}
+
+function getMethodInfo(log: { entityType: string; newValues: string | null }): string | null {
+  if (!log.newValues) return null
+  try {
+    const data = JSON.parse(log.newValues)
+    if (log.entityType === 'financial_movement') {
+      const type = MOVEMENT_LABELS[data.movementType] || null
+      const source = SOURCE_LABELS[data.sourceType] || null
+      if (type && source) return type + ' · ' + source
+      if (type) return type
+      if (source) return source
+    }
+    if (log.entityType === 'sale' || log.entityType === 'expense' || log.entityType === 'purchase') {
+      const payment = PAYMENT_LABELS[data.paymentType]
+      if (payment) return payment
+    }
+  } catch {}
+  return null
+}
+
 const ACTION_LABELS: Record<string, string> = {
   create: 'Creó',
   update: 'Editó',
@@ -163,6 +212,7 @@ export default async function AuditPage() {
                 else { iconColor = 'text-warning'; bgColor = 'bg-warning/[0.08]' }
               }
               const diff = formatDiff(log)
+              const method = getMethodInfo(log)
               return (
                 <div key={log.id} className="px-5 py-3 hover:bg-muted/40 transition-colors duration-150">
                   <div className="flex items-start gap-3">
@@ -175,6 +225,9 @@ export default async function AuditPage() {
                           <span className={`font-medium ${iconColor}`}>{ACTION_LABELS[log.action] || log.action}</span>
                           {' '}
                           <span className="text-muted-foreground">{ENTITY_LABELS[log.entityType] || log.entityType.replace('_', ' ')}</span>
+                          {method && (
+                            <span className="text-[10px] text-muted-foreground/70 font-normal ml-1.5">· {method}</span>
+                          )}
                         </p>
                         <p className="text-xs text-muted-foreground shrink-0">{formatDateTime(log.createdAt)}</p>
                       </div>

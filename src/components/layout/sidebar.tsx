@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
@@ -40,8 +41,8 @@ export default function Sidebar() {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#3B82F6] to-[#2563EB] flex items-center justify-center shadow-sm">
-          <span className="text-white font-bold text-[11px]">A</span>
+        <div className="w-7 h-7 relative flex items-center justify-center">
+          <Image src="/logo.svg" alt="Aurum Finance" width={28} height={28} className="object-contain" />
         </div>
         {!collapsed && (
           <div className="flex flex-col">
