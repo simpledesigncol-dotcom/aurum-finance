@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, X, ArrowUpRight, FileText, DollarSign, Users, Scale, Receipt, Package } from 'lucide-react'
+import { Search, X, ArrowUpRight, FileText, DollarSign, Users, Scale, Receipt, Package, Wrench } from 'lucide-react'
 
 interface SearchResult {
   id: string
@@ -25,6 +25,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   receivable: ArrowUpRight,
   payable: ArrowUpRight,
   document: FileText,
+  work_order: Wrench,
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -37,6 +38,7 @@ const TYPE_LABELS: Record<string, string> = {
   receivable: 'CxC',
   payable: 'CxP',
   document: 'Documento',
+  work_order: 'OT',
 }
 
 export default function GlobalSearch() {

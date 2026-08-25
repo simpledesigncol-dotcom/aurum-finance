@@ -18,6 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Aurum Finance",
   description: "Centro de Control Financiero",
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({

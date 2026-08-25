@@ -10,8 +10,8 @@ import {
   ShoppingBag, Receipt, Package, Users,
   ArrowDownLeft, ArrowUpRight, Scale,
   Box, FileText, ShieldCheck, BarChart3, Settings,
-  ChevronLeft, ChevronRight,
-  Menu, X, Handshake
+  ChevronRight, Menu, X, Handshake,
+  ArrowLeftRight, Wrench
 } from 'lucide-react'
 import { SIDEBAR_ITEMS } from '@/lib/constants'
 import GlobalSearch from '@/components/global-search'
@@ -20,7 +20,8 @@ const iconMap: Record<string, React.ElementType> = {
   LayoutDashboard, Wallet, Building2, TrendingUp,
   ShoppingBag, Receipt, Package, Users,
   ArrowDownLeft, ArrowUpRight, Scale,
-  Box, FileText, ShieldCheck, BarChart3, Settings, Handshake,
+  Box, FileText, ShieldCheck, BarChart3, Settings,
+  Handshake, ArrowLeftRight, Wrench,
 }
 
 export default function Sidebar() {
@@ -40,13 +41,15 @@ export default function Sidebar() {
   const navContent = (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border">
+      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-sidebar-border">
         <div className="w-7 h-7 relative flex items-center justify-center">
           <Image src="/logo.svg" alt="Aurum Finance" width={28} height={28} className="object-contain" />
         </div>
         {!collapsed && (
           <div className="flex flex-col">
-            <span className="text-foreground font-semibold text-[13px] tracking-tight leading-tight">Aurum Finance</span>
+            <span className="text-foreground font-semibold text-[13px] tracking-tight leading-tight">
+              Aurum <span className="text-gold">Finance</span>
+            </span>
             <span className="text-[10px] text-muted-foreground font-medium tracking-wide uppercase">Control Center</span>
           </div>
         )}
@@ -83,10 +86,10 @@ export default function Sidebar() {
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-all duration-150",
+                  "flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium",
                   isActive
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    ? "bg-sidebar-active text-foreground"
+                    : "text-sidebar-fg hover:text-foreground hover:bg-sidebar-hover"
                 )}
                 title={collapsed ? item.label : undefined}
               >
@@ -100,17 +103,17 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom user */}
-      <div className="px-3 py-3 border-t border-border">
+      <div className="px-3 py-3 border-t border-sidebar-border">
         <div className={cn(
           "flex items-center gap-2.5 px-2.5 py-2 rounded-lg",
-          "hover:bg-muted/60 transition-colors cursor-default"
+          "hover:bg-sidebar-hover transition-colors cursor-default"
         )}>
-          <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] text-muted-foreground font-medium">
-            U
+          <div className="w-7 h-7 rounded-full bg-sidebar-active flex items-center justify-center text-[11px] text-blue font-semibold">
+            A
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-[12px] text-foreground font-medium truncate">Usuario</span>
+              <span className="text-[12px] text-foreground font-medium truncate">Admin</span>
               <span className="text-[10px] text-muted-foreground truncate">admin@aurum.com</span>
             </div>
           )}
@@ -124,22 +127,23 @@ export default function Sidebar() {
       {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-3 left-3 z-50 md:hidden p-2 rounded-lg bg-card/90 backdrop-blur border border-border text-muted-foreground shadow-sm"
+        className="fixed top-3 left-3 z-50 md:hidden p-2 rounded-lg bg-card/90 backdrop-blur-sm border border-border text-muted-foreground shadow-sm"
       >
         {mobileOpen ? <X size={18} /> : <Menu size={18} />}
       </button>
 
       {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
+      <div
+        className={cn(
+          "fixed inset-0 bg-black/20 backdrop-blur-sm z-40 md:hidden transition-opacity duration-200",
+          mobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={() => setMobileOpen(false)}
+      />
 
       {/* Mobile sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 w-56 bg-card transform transition-transform duration-200 md:hidden border-r border-border shadow-lg",
+        "fixed inset-y-0 left-0 z-40 w-56 bg-card transform transition-transform duration-200 ease-out md:hidden border-r border-sidebar-border shadow-xl",
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         {navContent}
@@ -147,15 +151,16 @@ export default function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside className={cn(
-        "hidden md:flex flex-col relative bg-card border-r border-border transition-all duration-200 shrink-0",
+        "hidden md:flex flex-col relative bg-sidebar-bg border-r border-sidebar-border shrink-0",
+        "transition-[width] duration-200 ease-out",
         collapsed ? "w-[58px]" : "w-56"
       )}>
         {navContent}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-2.5 top-16 w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150 shadow-sm"
+          className="absolute -right-2.5 top-16 w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted shadow-sm"
         >
-          {collapsed ? <ChevronRight size={10} /> : <ChevronLeft size={10} />}
+          <ChevronRight size={10} className={cn("transition-transform duration-200", !collapsed && "rotate-180")} />
         </button>
       </aside>
     </>

@@ -2,206 +2,58 @@ export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/prisma'
 import { getTotalCashBalance, getTotalBankBalance } from '@/lib/balances'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, movementTypeLabel } from '@/lib/utils'
 import {
-  Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft,
-  AlertTriangle, CreditCard, Receipt,
+  Wallet, Building2, ArrowDownLeft, ArrowUpRight,
+  AlertTriangle, Clock, ArrowRight, TrendingUp, TrendingDown,
+  Activity, DollarSign,
 } from 'lucide-react'
 import Link from 'next/link'
-import PeriodFilter from '@/components/period-filter'
-import { Suspense } from 'react'
+import { format, subDays, startOfDay } from 'date-fns'
+import { es } from 'date-fns/locale'
 
-async function getDashboardData(period: string = 'month') {
-  const companyId = 'default'
+function getGreeting(): string {
   const now = new Date()
-
-  let startOfPeriod: Date
-  let startOfPrevPeriod: Date
-
-  switch (period) {
-    case 'week':
-      startOfPeriod = new Date(now)
-      startOfPeriod.setDate(now.getDate() - now.getDay())
-      startOfPeriod.setHours(0, 0, 0, 0)
-      startOfPrevPeriod = new Date(startOfPeriod)
-      startOfPrevPeriod.setDate(startOfPrevPeriod.getDate() - 7)
-      break
-    case 'quarter':
-      startOfPeriod = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)
-      startOfPrevPeriod = new Date(startOfPeriod)
-      startOfPrevPeriod.setMonth(startOfPrevPeriod.getMonth() - 3)
-      break
-    case 'year':
-      startOfPeriod = new Date(now.getFullYear(), 0, 1)
-      startOfPrevPeriod = new Date(now.getFullYear() - 1, 0, 1)
-      break
-    default:
-      startOfPeriod = new Date(now.getFullYear(), now.getMonth(), 1)
-      startOfPrevPeriod = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  }
-
-  const [totalCash, totalBank] = await Promise.all([
-    getTotalCashBalance(companyId),
-    getTotalBankBalance(companyId),
-  ])
-
-  const [currentMovements, prevMovements, allMovements] = await Promise.all([
-    prisma.financialMovement.findMany({
-      where: { movementDate: { gte: startOfPeriod }, status: 'confirmed' },
-      orderBy: { movementDate: 'asc' },
-      include: { category: true, contact: true },
-    }),
-    prisma.financialMovement.findMany({
-      where: { movementDate: { gte: startOfPrevPeriod, lt: startOfPeriod }, status: 'confirmed' },
-      select: { amount: true, direction: true, movementDate: true },
-    }),
-    prisma.financialMovement.findMany({
-      where: { status: 'confirmed', movementDate: { gte: new Date(now.getFullYear() - 1, now.getMonth(), 1) } },
-      orderBy: { movementDate: 'asc' },
-      select: { amount: true, direction: true, movementDate: true },
-    }),
-  ])
-
-  const currentIncome = currentMovements.filter(m => m.direction === 'in').reduce((sum, m) => sum + Number(m.amount), 0)
-  const currentExpenses = currentMovements.filter(m => m.direction === 'out').reduce((sum, m) => sum + Number(m.amount), 0)
-  const prevIncome = prevMovements.filter(m => m.direction === 'in').reduce((sum, m) => sum + Number(m.amount), 0)
-  const prevExpenses = prevMovements.filter(m => m.direction === 'out').reduce((sum, m) => sum + Number(m.amount), 0)
-  const incomeTrend = prevIncome > 0 ? ((currentIncome - prevIncome) / prevIncome) * 100 : 0
-  const expenseTrend = prevExpenses > 0 ? ((currentExpenses - prevExpenses) / prevExpenses) * 100 : 0
-
-  const pendingAR = await prisma.accountsReceivable.aggregate({ where: { status: { not: 'paid' } }, _sum: { balance: true }, _count: true })
-  const pendingAP = await prisma.accountsPayable.aggregate({ where: { status: { not: 'paid' } }, _sum: { balance: true }, _count: true })
-  const activeObligations = await prisma.obligation.aggregate({ where: { status: 'active' }, _sum: { balance: true }, _count: true })
-  const overdueCount = await prisma.accountsReceivable.count({ where: { status: { not: 'paid' }, dueDate: { lt: now } } })
-
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-  const allObligations = await prisma.obligation.findMany({
-    where: { status: { notIn: ['paid', 'completed', 'cancelled'] } },
-    select: { id: true, name: true, type: true, balance: true, nextDueDate: true, endDate: true, priority: true },
-  })
-
-  const obligationReminders = {
-    overdue: [] as { id: string; name: string; type: string; balance: number; daysOverdue: number; priority: string; dueDate?: string }[],
-    dueToday: [] as { id: string; name: string; type: string; balance: number; priority: string; dueDate?: string }[],
-    upcoming: [] as { id: string; name: string; type: string; balance: number; dueDate: string; priority: string }[],
-  }
-
-  const categoryExpenses: { name: string; total: number; count: number }[] = []
-  const expenseMap = new Map<string, { total: number; count: number }>()
-  for (const m of currentMovements) {
-    if (m.direction !== 'out') continue
-    const key = m.category?.name || 'Sin categoría'
-    const existing = expenseMap.get(key) || { total: 0, count: 0 }
-    existing.total += Number(m.amount)
-    existing.count++
-    expenseMap.set(key, existing)
-  }
-  for (const [name, val] of expenseMap) {
-    categoryExpenses.push({ name, total: val.total, count: val.count })
-  }
-  categoryExpenses.sort((a, b) => b.total - a.total)
-
-  for (const o of allObligations) {
-    const dueDate = o.nextDueDate || o.endDate
-    if (!dueDate) continue
-    const due = new Date(dueDate)
-    due.setHours(0, 0, 0, 0)
-    const diffDays = Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-
-    if (diffDays < 0) {
-      obligationReminders.overdue.push({ ...o, daysOverdue: Math.abs(diffDays) })
-    } else if (diffDays === 0) {
-      obligationReminders.dueToday.push({ ...o })
-    } else if (diffDays <= 7) {
-      obligationReminders.upcoming.push({ ...o, dueDate: due.toISOString() })
-    }
-  }
-
-  obligationReminders.overdue.sort((a, b) => b.daysOverdue - a.daysOverdue)
-
-  const barData: { label: string; income: number; expenses: number }[] = []
-  const monthNames = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-  const dayNames = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab']
-
-  if (period === 'week') {
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now); d.setDate(now.getDate() - i); d.setHours(0, 0, 0, 0)
-      const next = new Date(d); next.setDate(d.getDate() + 1)
-      const dm = allMovements.filter(m => m.movementDate >= d && m.movementDate < next)
-      barData.push({ label: dayNames[d.getDay()], income: dm.filter(m => m.direction === 'in').reduce((s, m) => s + Number(m.amount), 0), expenses: dm.filter(m => m.direction === 'out').reduce((s, m) => s + Number(m.amount), 0) })
-    }
-  } else if (period === 'month') {
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-    const weekStart = new Date(monthStart)
-    let weekNum = 1
-    while (weekStart < monthEnd) {
-      const wEnd = new Date(weekStart); wEnd.setDate(weekStart.getDate() + 7)
-      const wm = allMovements.filter(m => m.movementDate >= weekStart && m.movementDate < (wEnd < monthEnd ? wEnd : monthEnd))
-      barData.push({ label: `S${weekNum}`, income: wm.filter(m => m.direction === 'in').reduce((s, m) => s + Number(m.amount), 0), expenses: wm.filter(m => m.direction === 'out').reduce((s, m) => s + Number(m.amount), 0) })
-      weekStart.setDate(weekStart.getDate() + 7)
-      weekNum++
-    }
-  } else if (period === 'quarter') {
-    const quarter = Math.floor(now.getMonth() / 3)
-    for (let i = 0; i < 3; i++) {
-      const m = new Date(now.getFullYear(), quarter * 3 + i, 1)
-      const mEnd = new Date(now.getFullYear(), quarter * 3 + i + 1, 1)
-      const mm = allMovements.filter(mt => mt.movementDate >= m && mt.movementDate < mEnd)
-      barData.push({ label: monthNames[m.getMonth()], income: mm.filter(mt => mt.direction === 'in').reduce((s, mt) => s + Number(mt.amount), 0), expenses: mm.filter(mt => mt.direction === 'out').reduce((s, mt) => s + Number(mt.amount), 0) })
-    }
-  } else {
-    for (let i = 0; i < 12; i++) {
-      const m = new Date(now.getFullYear(), i, 1)
-      const mEnd = new Date(now.getFullYear(), i + 1, 1)
-      const mm = allMovements.filter(mt => mt.movementDate >= m && mt.movementDate < mEnd)
-      barData.push({ label: monthNames[m.getMonth()], income: mm.filter(mt => mt.direction === 'in').reduce((s, mt) => s + Number(mt.amount), 0), expenses: mm.filter(mt => mt.direction === 'out').reduce((s, mt) => s + Number(mt.amount), 0) })
-    }
-  }
-
-  return {
-    totalCash, totalBank, totalAssets: totalCash + totalBank,
-    monthlyIncome: currentIncome, monthlyExpenses: currentExpenses, monthlyNet: currentIncome - currentExpenses,
-    incomeTrend, expenseTrend,
-    pendingAR: Number(pendingAR._sum.balance || 0), pendingARCount: pendingAR._count,
-    pendingAP: Number(pendingAP._sum.balance || 0), pendingAPCount: pendingAP._count,
-    obligationBalance: Number(activeObligations._sum.balance || 0), obligationCount: activeObligations._count,
-    overdueCount, obligationReminders,
-    recentMovements: currentMovements.slice(-10).reverse(), barData,
-    projected: totalCash + totalBank + Number(pendingAR._sum.balance || 0) - Number(pendingAP._sum.balance || 0) - Number(activeObligations._sum.balance || 0),
-    categoryExpenses,
-  }
+  const hour = now.getHours()
+  if (hour < 12) return 'Buenos días'
+  if (hour < 18) return 'Buenas tardes'
+  return 'Buenas noches'
 }
 
 function TrendBadge({ value, inverted }: { value: number; inverted?: boolean }) {
   if (Math.abs(value) < 0.1) return null
   const positive = inverted ? value < 0 : value > 0
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full ${positive ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+    <span className={`inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full ${positive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
       {positive ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
       {Math.abs(value).toFixed(1)}%
     </span>
   )
 }
 
-function BarChart({ data }: { data: { label: string; income: number; expenses: number }[] }) {
+function FlowChart({ data }: { data: { label: string; income: number; expenses: number }[] }) {
   const maxVal = Math.max(...data.map(d => Math.max(d.income, d.expenses)), 1)
   return (
-    <div className="flex items-end gap-1 h-44 sm:h-52 px-1">
+    <div className="flex items-end gap-2 h-48 px-1">
       {data.map((d, i) => {
         const incomeH = (d.income / maxVal) * 100
         const expenseH = (d.expenses / maxVal) * 100
         return (
           <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-            <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-foreground text-white text-[10px] px-2.5 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
+            <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-foreground text-white text-[10px] px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
               <div className="font-medium mb-0.5">{d.label}</div>
-              <div className="text-success font-medium">+{formatCurrency(d.income)}</div>
-              <div className="text-danger font-medium">-{formatCurrency(d.expenses)}</div>
+              <div className="text-emerald-400 font-medium">+{formatCurrency(d.income)}</div>
+              <div className="text-red-400 font-medium">-{formatCurrency(d.expenses)}</div>
             </div>
             <div className="w-full flex gap-[3px] items-end" style={{ height: '100%' }}>
-              <div className="flex-1 rounded-[3px] bg-success/60 hover:bg-success transition-colors duration-150 bar-chart-bar" style={{ height: `${Math.max(incomeH, 1)}%` }} />
-              <div className="flex-1 rounded-[3px] bg-danger/40 hover:bg-danger/60 transition-colors duration-150 bar-chart-bar" style={{ height: `${Math.max(expenseH, 1)}%` }} />
+              <div
+                className="flex-1 rounded-[3px] bg-emerald-400/70 hover:bg-emerald-500 transition-colors duration-150 bar-chart-bar"
+                style={{ height: `${Math.max(incomeH, 1)}%` }}
+              />
+              <div
+                className="flex-1 rounded-[3px] bg-red-400/40 hover:bg-red-500/60 transition-colors duration-150 bar-chart-bar"
+                style={{ height: `${Math.max(expenseH, 1)}%` }}
+              />
             </div>
             <span className="text-[10px] text-muted-foreground font-medium">{d.label}</span>
           </div>
@@ -211,322 +63,368 @@ function BarChart({ data }: { data: { label: string; income: number; expenses: n
   )
 }
 
-async function DashboardContent({ period }: { period: string }) {
-  const data = await getDashboardData(period)
+function TimelineItem({ m }: {
+  m: { id: string; direction: string; movementType: string; description: string | null; amount: number; createdAt: Date }
+}) {
+  const isIn = m.direction === 'in'
+  return (
+    <div className="flex items-start gap-4 relative">
+      <div className="flex flex-col items-center">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${isIn ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+          {isIn ? <ArrowDownLeft size={14} strokeWidth={2} /> : <ArrowUpRight size={14} strokeWidth={2} />}
+        </div>
+        <div className="w-px flex-1 bg-border min-h-[20px]" />
+      </div>
+      <div className="flex-1 pb-4 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-medium truncate">
+            {m.description || movementTypeLabel(m.movementType)}
+          </p>
+          <p className={`text-sm font-bold tabular-nums shrink-0 ${isIn ? 'text-emerald-600' : 'text-red-600'}`}>
+            {isIn ? '+' : '-'}{formatCurrency(Number(m.amount))}
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">{movementTypeLabel(m.movementType)}</p>
+      </div>
+    </div>
+  )
+}
+
+async function getDashboardData() {
+  const companyId = 'default'
+  const now = new Date()
+  const today = startOfDay(now)
+  const sevenDaysAgo = subDays(today, 6)
+
+  const [totalCash, totalBank] = await Promise.all([
+    getTotalCashBalance(companyId),
+    getTotalBankBalance(companyId),
+  ])
+
+  const [
+    pendingARAgg,
+    pendingAPAgg,
+    obligationAgg,
+    overdueAR,
+    overdueAP,
+    upcomingObligations,
+    pendingMovements,
+    last10Movements,
+    last30DaysMovements,
+    flowData,
+  ] = await Promise.all([
+    prisma.accountsReceivable.aggregate({
+      where: { status: { notIn: ['paid', 'cancelled'] } },
+      _sum: { balance: true },
+      _count: true,
+    }),
+    prisma.accountsPayable.aggregate({
+      where: { status: { notIn: ['paid', 'cancelled'] } },
+      _sum: { balance: true },
+      _count: true,
+    }),
+    prisma.obligation.aggregate({
+      where: { status: 'active' },
+      _sum: { balance: true },
+    }),
+    prisma.accountsReceivable.findMany({
+      where: { status: { notIn: ['paid', 'cancelled'] }, dueDate: { lt: now } },
+      select: { id: true, description: true, balance: true, dueDate: true, contact: { select: { name: true } } },
+      orderBy: { dueDate: 'asc' },
+    }),
+    prisma.accountsPayable.findMany({
+      where: { status: { notIn: ['paid', 'cancelled'] }, dueDate: { lt: now } },
+      select: { id: true, description: true, balance: true, dueDate: true, contact: { select: { name: true } } },
+      orderBy: { dueDate: 'asc' },
+    }),
+    prisma.obligation.findMany({
+      where: {
+        status: 'active',
+        nextDueDate: { gte: today, lte: subDays(today, -7) },
+      },
+      select: { id: true, name: true, type: true, nextDueDate: true, paymentAmount: true, priority: true },
+      orderBy: { nextDueDate: 'asc' },
+    }),
+    prisma.financialMovement.count({
+      where: { status: 'pending' },
+    }),
+    prisma.financialMovement.findMany({
+      where: { status: 'confirmed' },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        id: true, direction: true, movementType: true,
+        description: true, amount: true, createdAt: true,
+      },
+    }),
+    prisma.financialMovement.findMany({
+      where: { status: 'confirmed', movementDate: { gte: subDays(now, 60) } },
+      select: { amount: true, direction: true, movementDate: true },
+    }),
+    prisma.financialMovement.findMany({
+      where: { status: 'confirmed', movementDate: { gte: sevenDaysAgo } },
+      select: { amount: true, direction: true, movementDate: true },
+    }),
+  ])
+
+  const pendingAR = Number(pendingARAgg._sum.balance || 0)
+  const pendingAP = Number(pendingAPAgg._sum.balance || 0)
+  const obligationBalance = Number(obligationAgg._sum.balance || 0)
+  const totalAvailable = totalCash + totalBank - pendingAP - obligationBalance
+
+  const prevThirtyStart = subDays(sevenDaysAgo, 30)
+  const prevThirtyEnd = sevenDaysAgo
+  const prevMovements = last30DaysMovements.filter(
+    m => m.movementDate >= prevThirtyStart && m.movementDate < prevThirtyEnd
+  )
+  const prevIncome = prevMovements.filter(m => m.direction === 'in').reduce((s, m) => s + Number(m.amount), 0)
+  const prevExpenses = prevMovements.filter(m => m.direction === 'out').reduce((s, m) => s + Number(m.amount), 0)
+  const prevNet = prevIncome - prevExpenses
+
+  const currentIncome = last30DaysMovements.filter(
+    m => m.movementDate >= sevenDaysAgo && m.direction === 'in'
+  ).reduce((s, m) => s + Number(m.amount), 0)
+  const currentExpenses = last30DaysMovements.filter(
+    m => m.movementDate >= sevenDaysAgo && m.direction === 'out'
+  ).reduce((s, m) => s + Number(m.amount), 0)
+  const currentNet = currentIncome - currentExpenses
+
+  const netTrend = prevNet !== 0 ? ((currentNet - prevNet) / Math.abs(prevNet)) * 100 : 0
+
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const flow7Days: { label: string; income: number; expenses: number }[] = []
+  for (let i = 6; i >= 0; i--) {
+    const dayDate = subDays(today, i)
+    const nextDay = subDays(today, i - 1)
+    const dayMoves = flowData.filter(m => m.movementDate >= dayDate && m.movementDate < nextDay)
+    flow7Days.push({
+      label: dayNames[dayDate.getDay()],
+      income: dayMoves.filter(m => m.direction === 'in').reduce((s, m) => s + Number(m.amount), 0),
+      expenses: dayMoves.filter(m => m.direction === 'out').reduce((s, m) => s + Number(m.amount), 0),
+    })
+  }
+
+  return {
+    totalAvailable, totalCash, totalBank, pendingAR, pendingAP,
+    obligationBalance, pendingARCount: pendingARAgg._count,
+    pendingAPCount: pendingAPAgg._count,
+    overdueAR, overdueAP, upcomingObligations,
+    pendingMovements, last10Movements, flow7Days, netTrend,
+  }
+}
+
+export default async function DashboardPage() {
+  const data = await getDashboardData()
+  const greeting = getGreeting()
+
+  const totalCommitments = data.pendingAP + data.obligationBalance
 
   return (
-    <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-5 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Resumen financiero de tu negocio</p>
-        </div>
-        <PeriodFilter />
+    <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-6 animate-fade-in">
+
+      {/* ── Header ── */}
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+          {greeting}, Aurum.
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">Tu posición financiera</p>
       </div>
 
-      {/* Total patrimony — clean white card, no dark hero */}
-      <div className="bg-card rounded-xl border border-border p-6 sm:p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-blue/[0.04] rounded-full -translate-y-1/2 translate-x-1/2" />
+      {/* ── Position Card ── */}
+      <div className="bg-white rounded-xl border border-border p-6 sm:p-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-40 h-40 rounded-full -translate-y-1/2 translate-x-1/2"
+          style={{ background: 'radial-gradient(circle, rgba(184,134,11,0.06) 0%, transparent 70%)' }} />
         <div className="relative">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Patrimonio total</p>
-          <p className="text-3xl sm:text-4xl font-bold tracking-tight mt-2 tabular-nums">{formatCurrency(data.totalAssets)}</p>
-          <div className="flex items-center gap-6 mt-4">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Posición neta</p>
+          <div className="flex items-end gap-3 mt-2">
+            <p className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums"
+              style={{ color: data.totalAvailable >= 0 ? undefined : '#DC2626' }}>
+              {formatCurrency(data.totalAvailable)}
+            </p>
+            <TrendBadge value={data.netTrend} />
+          </div>
+          <div className="flex items-center gap-6 mt-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-success" />
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <span className="text-xs text-muted-foreground">Caja {formatCurrency(data.totalCash)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue" />
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
               <span className="text-xs text-muted-foreground">Bancos {formatCurrency(data.totalBank)}</span>
             </div>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#B8860B' }} />
+              <span className="text-xs text-muted-foreground">CxC {formatCurrency(data.pendingAR)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              <span className="text-xs text-muted-foreground">Comprometido {formatCurrency(totalCommitments)}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger">
-        <Link href="/cash" className="group bg-card rounded-xl border border-border p-4 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-muted-foreground">Caja</span>
-            <div className="w-7 h-7 rounded-lg bg-blue/[0.08] flex items-center justify-center group-hover:bg-blue/[0.14] transition-colors duration-200">
-              <Wallet size={14} className="text-blue" strokeWidth={1.8} />
-            </div>
+      {/* ── Flow Chart ── */}
+      <div className="bg-white rounded-xl border border-border p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-semibold text-sm">Flujo últimos 7 días</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Ingresos vs gastos diarios</p>
           </div>
-          <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(data.totalCash)}</p>
-        </Link>
-
-        <Link href="/banks" className="group bg-card rounded-xl border border-border p-4 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-muted-foreground">Bancos</span>
-            <div className="w-7 h-7 rounded-lg bg-primary/[0.04] flex items-center justify-center group-hover:bg-primary/[0.08] transition-colors duration-200">
-              <CreditCard size={14} className="text-muted-foreground" strokeWidth={1.8} />
-            </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400/70" />Ingresos
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-red-400/40" />Gastos
+            </span>
           </div>
-          <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(data.totalBank)}</p>
-        </Link>
-
-        <div className="bg-card rounded-xl border border-border p-4 animate-slide-up">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-muted-foreground">Ingresos</span>
-            <div className="w-7 h-7 rounded-lg bg-success/[0.08] flex items-center justify-center">
-              <ArrowDownLeft size={14} className="text-success" strokeWidth={1.8} />
-            </div>
-          </div>
-          <p className="text-xl font-bold tabular-nums tracking-tight text-success">{formatCurrency(data.monthlyIncome)}</p>
-          <TrendBadge value={data.incomeTrend} />
         </div>
+        <FlowChart data={data.flow7Days} />
+      </div>
 
-        <div className="bg-card rounded-xl border border-border p-4 animate-slide-up">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-muted-foreground">Gastos</span>
-            <div className="w-7 h-7 rounded-lg bg-danger/[0.08] flex items-center justify-center">
-              <ArrowUpRight size={14} className="text-danger" strokeWidth={1.8} />
+      {/* ── Where is the money ── */}
+      <div>
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">Dónde está el dinero</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger">
+          <Link href="/cash" className="group bg-white rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-medium text-muted-foreground">Caja</span>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors duration-200">
+                <Wallet size={16} className="text-emerald-600" strokeWidth={1.8} />
+              </div>
             </div>
-          </div>
-          <p className="text-xl font-bold tabular-nums tracking-tight text-danger">{formatCurrency(data.monthlyExpenses)}</p>
-          <TrendBadge value={data.expenseTrend} inverted />
+            <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(data.totalCash)}</p>
+          </Link>
+
+          <Link href="/banks" className="group bg-white rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-medium text-muted-foreground">Bancos</span>
+              <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors duration-200">
+                <Building2 size={16} className="text-blue-600" strokeWidth={1.8} />
+              </div>
+            </div>
+            <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(data.totalBank)}</p>
+          </Link>
+
+          <Link href="/receivables" className="group bg-white rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-medium text-muted-foreground">Por cobrar</span>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center group-hover:opacity-90 transition-colors duration-200"
+                style={{ backgroundColor: 'rgba(184,134,11,0.08)' }}>
+                <ArrowDownLeft size={16} style={{ color: '#B8860B' }} strokeWidth={1.8} />
+              </div>
+            </div>
+            <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(data.pendingAR)}</p>
+            <p className="text-[11px] text-muted-foreground mt-1">{data.pendingARCount} documento{data.pendingARCount !== 1 ? 's' : ''}</p>
+          </Link>
+
+          <Link href="/payables" className="group bg-white rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-medium text-muted-foreground">Comprometido</span>
+              <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center group-hover:bg-red-100 transition-colors duration-200">
+                <ArrowUpRight size={16} className="text-red-600" strokeWidth={1.8} />
+              </div>
+            </div>
+            <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(totalCommitments)}</p>
+            <p className="text-[11px] text-muted-foreground mt-1">CxP + obligaciones</p>
+          </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-3 bg-card rounded-xl border border-border p-5 animate-slide-up">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="font-semibold text-sm">Ingresos vs Gastos</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Evolucion del periodo</p>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-success/60" />Ingresos</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-danger/40" />Gastos</span>
-            </div>
-          </div>
-          <BarChart data={data.barData} />
-        </div>
-
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-card rounded-xl border border-border p-5 animate-slide-up">
-            <h3 className="font-semibold text-sm mb-4">Flujo del periodo</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-muted-foreground">Ingresos</span>
-                <span className="text-sm font-semibold tabular-nums text-success">{formatCurrency(data.monthlyIncome)}</span>
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-muted-foreground">Gastos</span>
-                <span className="text-sm font-semibold tabular-nums text-danger">{formatCurrency(data.monthlyExpenses)}</span>
-              </div>
-              <div className="h-px bg-border" />
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm font-medium">Neto</span>
-                <span className={`text-sm font-bold tabular-nums ${data.monthlyNet >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(data.monthlyNet)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Cash flow projection */}
-          <div className="bg-card rounded-xl border border-border p-5 animate-slide-up">
-            <h3 className="font-semibold text-sm mb-4">Proyección</h3>
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between py-0.5">
-                <span className="text-xs text-muted-foreground">Liquidez actual</span>
-                <span className="text-xs font-semibold tabular-nums">{formatCurrency(data.totalAssets)}</span>
-              </div>
-              <div className="flex items-center justify-between py-0.5">
-                <span className="text-xs text-muted-foreground">+ CxC por cobrar</span>
-                <span className="text-xs font-semibold tabular-nums text-success">+{formatCurrency(data.pendingAR)}</span>
-              </div>
-              <div className="flex items-center justify-between py-0.5">
-                <span className="text-xs text-muted-foreground">- CxP por pagar</span>
-                <span className="text-xs font-semibold tabular-nums text-danger">-{formatCurrency(data.pendingAP)}</span>
-              </div>
-              <div className="flex items-center justify-between py-0.5">
-                <span className="text-xs text-muted-foreground">- Obligaciones</span>
-                <span className="text-xs font-semibold tabular-nums text-danger">-{formatCurrency(data.obligationBalance)}</span>
-              </div>
-              <div className="h-px bg-border" />
-              <div className="flex items-center justify-between py-0.5">
-                <span className="text-xs font-medium">Disponible estimado</span>
-                <span className={`text-xs font-bold tabular-nums ${data.projected >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(data.projected)}</span>
-              </div>
-            </div>
-          </div>
-
-          {data.pendingAP > data.pendingAR && (
-            <div className="flex items-center gap-3 bg-warning/[0.04] border border-warning/10 rounded-xl p-3.5 animate-slide-up">
-              <AlertTriangle size={15} className="text-warning shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-warning">Debes más de lo que te deben</p>
-                <p className="text-[11px] text-warning/60">CxP supera a CxC en {formatCurrency(data.pendingAP - data.pendingAR)}</p>
-              </div>
-            </div>
-          )}
-
-          {data.categoryExpenses.length > 0 && (
-            <div className="bg-card rounded-xl border border-border p-5 animate-slide-up">
-              <h3 className="font-semibold text-sm mb-3">Gastos por categoría</h3>
-              <div className="space-y-2.5">
-                {data.categoryExpenses.slice(0, 5).map((cat) => {
-                  const pct = data.monthlyExpenses > 0 ? (cat.total / data.monthlyExpenses) * 100 : 0
-                  return (
-                    <div key={cat.name}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-muted-foreground truncate">{cat.name}</span>
-                        <span className="text-xs font-semibold tabular-nums">{formatCurrency(cat.total)}</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-danger/50 rounded-full" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {data.overdueCount > 0 && (
-            <Link href="/receivables" className="flex items-center gap-3 bg-danger/[0.04] border border-danger/10 rounded-xl p-3.5 hover:bg-danger/[0.07] transition-colors animate-slide-up">
-              <AlertTriangle size={15} className="text-danger shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-danger">{`${data.overdueCount} vencida${data.overdueCount !== 1 ? 's' : ''}`}</p>
-                <p className="text-[11px] text-danger/60">CxC por revisar</p>
-              </div>
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {(data.obligationReminders.overdue.length > 0 || data.obligationReminders.dueToday.length > 0 || data.obligationReminders.upcoming.length > 0) && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">Recordatorios de obligaciones</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {data.obligationReminders.overdue.length > 0 && (
-              <Link href="/obligations" className="flex items-center gap-2.5 bg-danger/[0.04] border border-danger/10 rounded-xl p-3 hover:bg-danger/[0.07] transition-colors">
-                <AlertTriangle size={14} className="text-danger shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-danger">{data.obligationReminders.overdue.length} vencida{data.obligationReminders.overdue.length !== 1 ? 's' : ''}</p>
-                  <p className="text-[10px] text-danger/60 truncate">{data.obligationReminders.overdue.map(o => o.name).join(', ')}</p>
+      {/* ── Requires attention ── */}
+      {(data.overdueAR.length > 0 || data.overdueAP.length > 0 || data.upcomingObligations.length > 0 || data.pendingMovements > 0) && (
+        <div>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">Requiere atención</h2>
+          <div className="space-y-2">
+            {data.overdueAR.length > 0 && (
+              <Link href="/receivables" className="flex items-center justify-between bg-white rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                    <AlertTriangle size={16} className="text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">CxC vencidas</p>
+                    <p className="text-xs text-muted-foreground">{data.overdueAR.length} documento{data.overdueAR.length !== 1 ? 's' : ''} · {formatCurrency(data.overdueAR.reduce((s, r) => s + r.balance, 0))}</p>
+                  </div>
                 </div>
+                <ArrowRight size={14} className="text-muted-foreground" />
               </Link>
             )}
-            {data.obligationReminders.dueToday.length > 0 && (
-              <Link href="/obligations" className="flex items-center gap-2.5 bg-warning/[0.04] border border-warning/10 rounded-xl p-3 hover:bg-warning/[0.07] transition-colors">
-                <AlertTriangle size={14} className="text-warning shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-warning">{data.obligationReminders.dueToday.length} vence{data.obligationReminders.dueToday.length !== 1 ? 'n' : ''} hoy</p>
-                  <p className="text-[10px] text-warning/60 truncate">{data.obligationReminders.dueToday.map(o => o.name).join(', ')}</p>
+
+            {data.overdueAP.length > 0 && (
+              <Link href="/payables" className="flex items-center justify-between bg-white rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                    <AlertTriangle size={16} className="text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">CxP vencidas</p>
+                    <p className="text-xs text-muted-foreground">{data.overdueAP.length} documento{data.overdueAP.length !== 1 ? 's' : ''} · {formatCurrency(data.overdueAP.reduce((s, p) => s + p.balance, 0))}</p>
+                  </div>
                 </div>
+                <ArrowRight size={14} className="text-muted-foreground" />
               </Link>
             )}
-            {data.obligationReminders.upcoming.length > 0 && (
-              <Link href="/obligations" className="flex items-center gap-2.5 bg-blue/[0.04] border border-blue/10 rounded-xl p-3 hover:bg-blue/[0.07] transition-colors">
-                <AlertTriangle size={14} className="text-blue shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-blue">{data.obligationReminders.upcoming.length} próximas (7 días)</p>
-                  <p className="text-[10px] text-blue/60 truncate">{data.obligationReminders.upcoming.map(o => o.name).join(', ')}</p>
+
+            {data.upcomingObligations.length > 0 && (
+              <Link href="/obligations" className="flex items-center justify-between bg-white rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <Clock size={16} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Obligaciones próximas</p>
+                    <p className="text-xs text-muted-foreground">{data.upcomingObligations.length} en los próximos 7 días · {formatCurrency(data.upcomingObligations.reduce((s, o) => s + (o.paymentAmount || 0), 0))}</p>
+                  </div>
                 </div>
+                <ArrowRight size={14} className="text-muted-foreground" />
+              </Link>
+            )}
+
+            {data.pendingMovements > 0 && (
+              <Link href="/movements" className="flex items-center justify-between bg-white rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                    <Activity size={16} className="text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Movimientos pendientes</p>
+                    <p className="text-xs text-muted-foreground">{data.pendingMovements} movimiento{data.pendingMovements !== 1 ? 's' : ''} por confirmar</p>
+                  </div>
+                </div>
+                <ArrowRight size={14} className="text-muted-foreground" />
               </Link>
             )}
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="space-y-3">
-          <Link href="/receivables" className="block bg-card rounded-xl border border-border p-4 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">CxC</span>
-              <span className="text-[11px] bg-success/[0.08] text-success px-1.5 py-0.5 rounded-full font-medium">{data.pendingARCount}</span>
-            </div>
-            <p className="text-lg font-bold tabular-nums">{formatCurrency(data.pendingAR)}</p>
-          </Link>
-          <Link href="/payables" className="block bg-card rounded-xl border border-border p-4 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">CxP</span>
-              <span className="text-[11px] bg-warning/[0.08] text-warning px-1.5 py-0.5 rounded-full font-medium">{data.pendingAPCount}</span>
-            </div>
-            <p className="text-lg font-bold tabular-nums">{formatCurrency(data.pendingAP)}</p>
-          </Link>
-          <Link href="/obligations" className="block bg-card rounded-xl border border-border p-4 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Obligaciones</span>
-              <span className="text-[11px] bg-primary/[0.06] text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">{data.obligationCount}</span>
-            </div>
-            <p className="text-lg font-bold tabular-nums">{formatCurrency(data.obligationBalance)}</p>
-          </Link>
-        </div>
-
-        <div className="lg:col-span-2 bg-card rounded-xl border border-border animate-slide-up">
-          <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
-            <h2 className="font-semibold text-sm">Actividad reciente</h2>
-            <Link href="/cash" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Ver todo</Link>
-          </div>
-          <div className="divide-y divide-border max-h-80 overflow-y-auto">
-            {data.recentMovements.length === 0 ? (
-              <div className="px-5 py-12 text-center">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-                  <Receipt size={18} className="text-muted-foreground/60" />
-                </div>
-                <p className="text-sm font-medium">Sin movimientos</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Los movimientos apareceran aqui</p>
+      {/* ── Activity timeline ── */}
+      <div>
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">Actividad reciente</h2>
+        <div className="bg-white rounded-xl border border-border p-6">
+          {data.last10Movements.length === 0 ? (
+            <div className="text-center py-10">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <DollarSign size={18} className="text-muted-foreground/60" />
               </div>
-            ) : (
-              data.recentMovements.map((m) => (
-                <div key={m.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors duration-150">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${m.direction === 'in' ? 'bg-success/[0.08] text-success' : 'bg-danger/[0.08] text-danger'}`}>
-                    {m.direction === 'in' ? <ArrowDownLeft size={14} strokeWidth={1.8} /> : <ArrowUpRight size={14} strokeWidth={1.8} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{m.description || m.movementType}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <span className="font-mono text-[11px] text-muted-foreground/70">{m.transactionId}</span>
-                      <span className="text-muted-foreground/40">·</span>
-                      <span>{m.category?.name || m.movementType}</span>
-                      {m.contact && <><span className="text-muted-foreground/40">·</span><span>{m.contact.name}</span></>}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className={`text-sm font-semibold tabular-nums ${m.direction === 'in' ? 'text-success' : 'text-danger'}`}>
-                      {m.direction === 'in' ? '+' : '-'}{formatCurrency(Number(m.amount))}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{formatDate(m.movementDate)}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+              <p className="text-sm font-medium">Sin movimientos</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Los movimientos aparecerán aquí</p>
+            </div>
+          ) : (
+            <div>
+              {data.last10Movements.map((m) => (
+                <TimelineItem key={m.id} m={m} />
+              ))}
+              <Link href="/movements" className="flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors pt-2">
+                Ver todos los movimientos
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
-  )
-}
-
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ period?: string }>
-}) {
-  const { period } = await searchParams
-
-  return (
-    <Suspense fallback={
-      <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-5 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="h-7 w-48 bg-muted rounded-lg animate-pulse" />
-            <div className="h-4 w-64 bg-muted rounded-lg animate-pulse" />
-          </div>
-        </div>
-        <div className="h-32 bg-muted rounded-xl animate-pulse" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="rounded-xl border border-border p-4 space-y-3">
-              <div className="h-3 w-16 bg-muted rounded animate-pulse" />
-              <div className="h-6 w-28 bg-muted rounded animate-pulse" />
-            </div>
-          ))}
-        </div>
-      </div>
-    }>
-      <DashboardContent period={period || 'month'} />
-    </Suspense>
   )
 }

@@ -99,6 +99,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
             movementType: getMovementType(),
             amount: parseFloat(form.amount),
             direction: getDirection(),
+            occurredAt: form.movementDate,
             movementDate: form.movementDate,
             description: form.description || getEventLabel(),
             sourceType: 'cash_register',

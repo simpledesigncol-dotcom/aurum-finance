@@ -2,48 +2,155 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { generateTransactionId } from '@/lib/transactions'
 import { getDefaultRegisterId } from '@/lib/registers'
+import { getDateRange } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const sourceType = searchParams.get('sourceType')
-  const movementType = searchParams.get('movementType')
-  const status = searchParams.get('status')
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '50')
-  const skip = (page - 1) * limit
+interface MovementFilters {
+  sourceType?: string
+  movementType?: string
+  status?: string
+  categoryId?: string
+  contactId?: string
+  workOrderId?: string
+  dateFrom?: string
+  dateTo?: string
+  search?: string
+  paymentType?: string
+  quickFilter?: string
+  page: number
+  limit: number
+}
 
+function buildWhere(filters: MovementFilters) {
   const where: Record<string, unknown> = {}
-  if (sourceType) where.sourceType = sourceType
-  if (movementType) where.movementType = movementType
-  if (status) where.status = status
 
-  const [movements, total] = await Promise.all([
-    prisma.financialMovement.findMany({
-      where,
-      orderBy: { movementDate: 'desc' },
-      skip,
-      take: limit,
-      include: {
-        category: true,
-        contact: true,
-        creator: { select: { name: true, email: true } },
-        documents: true,
+  if (filters.sourceType) where.sourceType = filters.sourceType
+  if (filters.movementType) where.movementType = filters.movementType
+  if (filters.status) where.status = filters.status
+  if (filters.categoryId) where.categoryId = filters.categoryId
+  if (filters.contactId) where.contactId = filters.contactId
+  if (filters.workOrderId) where.workOrderId = filters.workOrderId
+
+  if (filters.paymentType) {
+    where.OR = [
+      { referenceType: 'sale', referenceId: { not: null } },
+      { referenceType: 'purchase', referenceId: { not: null } },
+    ]
+  }
+
+  if (filters.search) {
+    const searchCondition = {
+      OR: [
+        { transactionId: { contains: filters.search, mode: 'insensitive' as const } },
+        { description: { contains: filters.search, mode: 'insensitive' as const } },
+        { notes: { contains: filters.search, mode: 'insensitive' as const } },
+      ],
+    }
+    if (where.OR) {
+      where.AND = [searchCondition, { OR: where.OR }]
+      delete where.OR
+    } else {
+      Object.assign(where, searchCondition)
+    }
+  }
+
+  if (filters.dateFrom || filters.dateTo) {
+    where.occurredAt = {}
+    if (filters.dateFrom) {
+      (where.occurredAt as Record<string, Date>).gte = new Date(filters.dateFrom)
+    }
+    if (filters.dateTo) {
+      const to = new Date(filters.dateTo)
+      to.setHours(23, 59, 59, 999)
+      ;(where.occurredAt as Record<string, Date>).lte = to
+    }
+  }
+
+  if (filters.quickFilter) {
+    const range = getDateRange(filters.quickFilter)
+    switch (filters.quickFilter) {
+      case 'today':
+      case 'week':
+      case 'month':
+        where.occurredAt = { gte: range.start, lte: range.end }
+        break
+      case 'no-ot':
+        where.workOrderId = null
+        break
+      case 'no-receipt':
+        where.OR = [
+          { receiptNumber: null },
+          { receiptNumber: '' },
+        ]
+        break
+      case 'cash':
+        where.sourceType = 'cash_register'
+        break
+      case 'pending':
+        where.status = 'pending'
+        break
+    }
+  }
+
+  return where
+}
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url)
+
+    const filters: MovementFilters = {
+      sourceType: searchParams.get('sourceType') || undefined,
+      movementType: searchParams.get('movementType') || undefined,
+      status: searchParams.get('status') || undefined,
+      categoryId: searchParams.get('categoryId') || undefined,
+      contactId: searchParams.get('contactId') || undefined,
+      workOrderId: searchParams.get('workOrderId') || undefined,
+      dateFrom: searchParams.get('dateFrom') || undefined,
+      dateTo: searchParams.get('dateTo') || undefined,
+      search: searchParams.get('search') || undefined,
+      paymentType: searchParams.get('paymentType') || undefined,
+      quickFilter: searchParams.get('quickFilter') || undefined,
+      page: parseInt(searchParams.get('page') || '1'),
+      limit: parseInt(searchParams.get('limit') || '50'),
+    }
+
+    const where = buildWhere(filters)
+    const skip = (filters.page - 1) * filters.limit
+
+    const [movements, total] = await Promise.all([
+      prisma.financialMovement.findMany({
+        where,
+        orderBy: { occurredAt: 'desc' },
+        skip,
+        take: filters.limit,
+        include: {
+          category: true,
+          contact: true,
+          creator: { select: { name: true, email: true } },
+          workOrder: { select: { id: true, orderNumber: true } },
+        },
+      }),
+      prisma.financialMovement.count({ where }),
+    ])
+
+    return NextResponse.json({
+      movements,
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total,
+        totalPages: Math.ceil(total / filters.limit),
       },
-    }),
-    prisma.financialMovement.count({ where }),
-  ])
-
-  return NextResponse.json({
-    movements,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
-    },
-  })
+    })
+  } catch (error) {
+    console.error('Error fetching movements:', error)
+    return NextResponse.json(
+      { error: 'Error al obtener los movimientos' },
+      { status: 500 }
+    )
+  }
 }
 
 async function resolveOrCreateContact(
@@ -66,173 +173,6 @@ async function resolveOrCreateContact(
     data: { name, type, companyId },
   })
   return contact.id
-}
-
-async function createEntityForMovement(
-  movementType: string,
-  amount: number,
-  direction: string,
-  movementDate: Date,
-  description: string | null,
-  contactId: string | null,
-  paymentType: string | null,
-  notes: string | null,
-  movementId: string,
-  companyId: string,
-  createdBy: string
-): Promise<{ referenceType: string | null; referenceId: string | null }> {
-  let refType: string | null = null
-  let refId: string | null = null
-
-  try {
-    if (movementType === 'obligation_received' || (movementType === 'obligation_received' && direction === 'in')) {
-      const obligation = await prisma.obligation.create({
-        data: {
-          companyId,
-          type: 'partner_loan',
-          name: description || 'Préstamo recibido',
-          originalAmount: amount,
-          balance: amount,
-          contactId,
-          startDate: movementDate,
-          status: 'active',
-          createdBy,
-        },
-      })
-
-      const dueDate = new Date(movementDate)
-      dueDate.setMonth(dueDate.getMonth() + 1)
-
-      await prisma.accountsPayable.create({
-        data: {
-          companyId,
-          contactId: contactId || null,
-          description: description || 'Préstamo recibido',
-          originalAmount: amount,
-          balance: amount,
-          issueDate: movementDate,
-          dueDate,
-        },
-      })
-
-      refType = 'obligation'
-      refId = obligation.id
-    }
-
-    if (movementType === 'sale' || (movementType === 'income' && direction === 'in')) {
-      const sale = await prisma.sale.create({
-        data: {
-          companyId,
-          contactId,
-          saleDate: movementDate,
-          status: 'completed',
-          paymentType: paymentType || 'cash',
-          subtotal: amount,
-          total: amount,
-          amountPaid: amount,
-          source: 'manual',
-          createdBy,
-        },
-      })
-
-      await prisma.salePayment.create({
-        data: {
-          saleId: sale.id,
-          amount,
-          paymentDate: movementDate,
-          financialMovementId: movementId,
-          createdBy,
-        },
-      })
-
-      refType = 'sale'
-      refId = sale.id
-    }
-
-    if (movementType === 'expense' || (movementType === 'expense' && direction === 'out')) {
-      const expense = await prisma.expense.create({
-        data: {
-          companyId,
-          amount,
-          description,
-          expenseDate: movementDate,
-          financialMovementId: movementId,
-          createdBy,
-        },
-      })
-
-      refType = 'expense'
-      refId = expense.id
-    }
-
-    if (movementType === 'purchase' || (movementType === 'purchase' && direction === 'out')) {
-      const purchase = await prisma.purchase.create({
-        data: {
-          companyId,
-          contactId,
-          purchaseDate: movementDate,
-          purchaseType: 'other',
-          subtotal: amount,
-          total: amount,
-          paymentType: paymentType || 'cash',
-          amountPaid: amount,
-          status: 'completed',
-          createdBy,
-        },
-      })
-
-      await prisma.purchasePayment.create({
-        data: {
-          purchaseId: purchase.id,
-          amount,
-          paymentDate: movementDate,
-          financialMovementId: movementId,
-          createdBy,
-        },
-      })
-
-      refType = 'purchase'
-      refId = purchase.id
-    }
-
-    if (movementType === 'obligation_payment' || (movementType === 'obligation_payment' && direction === 'out')) {
-      refType = 'obligation_payment'
-    }
-
-    if (movementType === 'ar_payment' || (movementType === 'ar_payment' && direction === 'in')) {
-      const sale = await prisma.sale.create({
-        data: {
-          companyId,
-          contactId,
-          saleDate: movementDate,
-          status: 'completed',
-          paymentType: paymentType || 'cash',
-          subtotal: amount,
-          total: amount,
-          amountPaid: amount,
-          source: 'manual',
-          createdBy,
-        },
-      })
-
-      await prisma.salePayment.create({
-        data: {
-          saleId: sale.id,
-          amount,
-          paymentDate: movementDate,
-          financialMovementId: movementId,
-          createdBy,
-        },
-      })
-
-      refType = 'sale'
-      refId = sale.id
-    }
-  } catch (err) {
-    console.error(`Error creating entity for movementType=${movementType}:`, err)
-  }
-
-  return { referenceType: refType, referenceId: refId }
 }
 
 async function resolvePaymentSource(
@@ -269,6 +209,23 @@ async function resolvePaymentSource(
   return { sourceType: 'bank_account', sourceId: newAccount.id }
 }
 
+function movementTypeToContactType(movementType: string): string {
+  const map: Record<string, string> = {
+    sale: 'client',
+    purchase: 'supplier',
+    obligation_received: 'supplier',
+    obligation_payment: 'supplier',
+    ar_payment: 'client',
+    ap_payment: 'supplier',
+    income: 'other',
+    expense: 'other',
+    transfer: 'other',
+    capital_contribution: 'other',
+    adjustment: 'other',
+  }
+  return map[movementType] || 'other'
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -277,6 +234,7 @@ export async function POST(request: Request) {
       amount,
       direction,
       movementDate,
+      occurredAt,
       categoryId,
       description,
       sourceType,
@@ -287,18 +245,22 @@ export async function POST(request: Request) {
       notes,
       createdBy,
       status,
+      workOrderId,
+      receiptNumber,
     } = body
 
-    if (!movementType || !amount || !direction || !createdBy) {
+    if (!movementType || !amount || !direction) {
       return NextResponse.json(
-        { error: 'Campos requeridos faltantes' },
+        { error: 'Campos requeridos faltantes: movementType, amount, direction' },
         { status: 400 }
       )
     }
 
     const companyId = body.companyId || 'default'
+    const userId = createdBy || 'default-user'
     const parsedAmount = parseFloat(amount)
     const parsedDate = movementDate ? new Date(movementDate) : new Date()
+    const parsedOccurrence = occurredAt ? new Date(occurredAt) : parsedDate
 
     const resolvedContactId =
       contactId || (await resolveOrCreateContact(contactName, movementTypeToContactType(movementType), companyId))
@@ -318,37 +280,325 @@ export async function POST(request: Request) {
         movementType,
         amount: parsedAmount,
         direction,
+        occurredAt: parsedOccurrence,
         movementDate: parsedDate,
         categoryId: categoryId || null,
         description,
-        sourceType: resolvedSourceType,
-        sourceId: resolvedSourceId,
+        sourceType: sourceType || resolvedSourceType,
+        sourceId: sourceId || resolvedSourceId,
         contactId: resolvedContactId,
+        workOrderId: workOrderId || null,
+        receiptNumber: receiptNumber || null,
         notes: notes || null,
-        createdBy,
+        createdBy: userId,
       },
     })
 
-    const { referenceType, referenceId } = await createEntityForMovement(
-      movementType,
-      parsedAmount,
-      direction,
-      parsedDate,
-      description || null,
-      resolvedContactId,
-      paymentType || null,
-      notes || null,
-      movement.id,
-      companyId,
-      createdBy
-    )
+    let refType: string | null = null
+    let refId: string | null = null
 
-    if (referenceType || referenceId) {
+    switch (movementType) {
+      case 'income': {
+        const expense = await prisma.expense.create({
+          data: {
+            companyId,
+            amount: parsedAmount,
+            description: description || 'Ingreso',
+            expenseDate: parsedDate,
+            contactId: resolvedContactId,
+            categoryId: categoryId || null,
+            workOrderId: workOrderId || null,
+            financialMovementId: movement.id,
+            createdBy: userId,
+          },
+        })
+        refType = 'income'
+        refId = expense.id
+        break
+      }
+
+      case 'expense': {
+        const expense = await prisma.expense.create({
+          data: {
+            companyId,
+            amount: parsedAmount,
+            description,
+            expenseDate: parsedDate,
+            contactId: resolvedContactId,
+            categoryId: categoryId || null,
+            workOrderId: workOrderId || null,
+            financialMovementId: movement.id,
+            createdBy: userId,
+          },
+        })
+        refType = 'expense'
+        refId = expense.id
+        break
+      }
+
+      case 'transfer': {
+        const destSourceType = body.destSourceType || 'cash_register'
+        const destSourceId = body.destSourceId || await getDefaultRegisterId()
+
+        const originMovement = movement
+
+        const destTransactionId = await generateTransactionId()
+        const destMovement = await prisma.financialMovement.create({
+          data: {
+            transactionId: destTransactionId,
+            companyId,
+            status: status || 'confirmed',
+            movementType: 'transfer',
+            amount: parsedAmount,
+            direction: 'in',
+            occurredAt: parsedOccurrence,
+            movementDate: parsedDate,
+            description: description || 'Transferencia recibida',
+            sourceType: destSourceType,
+            sourceId: destSourceId,
+            contactId: resolvedContactId,
+            workOrderId: workOrderId || null,
+            notes: notes || null,
+            createdBy: userId,
+          },
+        })
+
+        await prisma.transfer.create({
+          data: {
+            companyId,
+            fromType: resolvedSourceType,
+            fromId: resolvedSourceId,
+            toType: destSourceType,
+            toId: destSourceId,
+            amount: parsedAmount,
+            description: description || null,
+            transferDate: parsedDate,
+            financialMovementOriginId: originMovement.id,
+            financialMovementDestId: destMovement.id,
+            createdBy: userId,
+          },
+        })
+
+        refType = 'transfer'
+        refId = destMovement.id
+        break
+      }
+
+      case 'sale': {
+        const sale = await prisma.sale.create({
+          data: {
+            companyId,
+            contactId: resolvedContactId,
+            workOrderId: workOrderId || null,
+            saleDate: parsedDate,
+            status: 'completed',
+            paymentType: paymentType || 'cash',
+            subtotal: parsedAmount,
+            total: parsedAmount,
+            amountPaid: parsedAmount,
+            source: 'manual',
+            createdBy: userId,
+          },
+        })
+
+        await prisma.salePayment.create({
+          data: {
+            saleId: sale.id,
+            amount: parsedAmount,
+            paymentDate: parsedDate,
+            financialMovementId: movement.id,
+            createdBy: userId,
+          },
+        })
+
+        refType = 'sale'
+        refId = sale.id
+        break
+      }
+
+      case 'purchase': {
+        const purchase = await prisma.purchase.create({
+          data: {
+            companyId,
+            contactId: resolvedContactId,
+            workOrderId: workOrderId || null,
+            purchaseDate: parsedDate,
+            purchaseType: 'other',
+            subtotal: parsedAmount,
+            total: parsedAmount,
+            paymentType: paymentType || 'cash',
+            amountPaid: parsedAmount,
+            status: 'completed',
+            createdBy: userId,
+          },
+        })
+
+        await prisma.purchasePayment.create({
+          data: {
+            purchaseId: purchase.id,
+            amount: parsedAmount,
+            paymentDate: parsedDate,
+            financialMovementId: movement.id,
+            createdBy: userId,
+          },
+        })
+
+        refType = 'purchase'
+        refId = purchase.id
+        break
+      }
+
+      case 'ar_payment': {
+        const arId = body.arId || body.referenceId
+        if (arId) {
+          const ar = await prisma.accountsReceivable.findUnique({ where: { id: arId } })
+          if (ar) {
+            const payment = await prisma.arPayment.create({
+              data: {
+                accountsReceivableId: arId,
+                amount: parsedAmount,
+                paymentDate: parsedDate,
+                financialMovementId: movement.id,
+                createdBy: userId,
+              },
+            })
+
+            const newPaidAmount = ar.paidAmount + parsedAmount
+            const newBalance = ar.originalAmount - newPaidAmount
+
+            await prisma.accountsReceivable.update({
+              where: { id: arId },
+              data: {
+                paidAmount: newPaidAmount,
+                balance: Math.max(0, newBalance),
+                status: newBalance <= 0 ? 'paid' : ar.status,
+              },
+            })
+
+            refType = 'ar_payment'
+            refId = payment.id
+          }
+        }
+        break
+      }
+
+      case 'ap_payment': {
+        const apId = body.apId || body.referenceId
+        if (apId) {
+          const ap = await prisma.accountsPayable.findUnique({ where: { id: apId } })
+          if (ap) {
+            const payment = await prisma.apPayment.create({
+              data: {
+                accountsPayableId: apId,
+                amount: parsedAmount,
+                paymentDate: parsedDate,
+                financialMovementId: movement.id,
+                createdBy: userId,
+              },
+            })
+
+            const newPaidAmount = ap.paidAmount + parsedAmount
+            const newBalance = ap.originalAmount - newPaidAmount
+
+            await prisma.accountsPayable.update({
+              where: { id: apId },
+              data: {
+                paidAmount: newPaidAmount,
+                balance: Math.max(0, newBalance),
+                status: newBalance <= 0 ? 'paid' : ap.status,
+              },
+            })
+
+            refType = 'ap_payment'
+            refId = payment.id
+          }
+        }
+        break
+      }
+
+      case 'obligation_payment': {
+        const obligationId = body.obligationId || body.referenceId
+        if (obligationId) {
+          const payment = await prisma.obligationPayment.create({
+            data: {
+              obligationId,
+              dueDate: parsedDate,
+              amountDue: parsedAmount,
+              amountPaid: parsedAmount,
+              paymentDate: parsedDate,
+              status: 'paid',
+              financialMovementId: movement.id,
+              notes: notes || null,
+            },
+          })
+
+          const obligation = await prisma.obligation.findUnique({ where: { id: obligationId } })
+          if (obligation) {
+            const newPaidAmount = obligation.paidAmount + parsedAmount
+            const newBalance = obligation.originalAmount - newPaidAmount
+
+            await prisma.obligation.update({
+              where: { id: obligationId },
+              data: {
+                paidAmount: newPaidAmount,
+                balance: Math.max(0, newBalance),
+                status: newBalance <= 0 ? 'paid' : obligation.status,
+              },
+            })
+          }
+
+          refType = 'obligation_payment'
+          refId = payment.id
+        }
+        break
+      }
+
+      case 'obligation_received': {
+        const obligation = await prisma.obligation.create({
+          data: {
+            companyId,
+            type: 'partner_loan',
+            name: description || 'Prestamo recibido',
+            originalAmount: parsedAmount,
+            balance: parsedAmount,
+            contactId: resolvedContactId,
+            startDate: parsedDate,
+            status: 'active',
+            createdBy: userId,
+          },
+        })
+
+        const dueDate = new Date(parsedDate)
+        dueDate.setMonth(dueDate.getMonth() + 1)
+
+        await prisma.accountsPayable.create({
+          data: {
+            companyId,
+            contactId: resolvedContactId,
+            description: description || 'Prestamo recibido',
+            originalAmount: parsedAmount,
+            balance: parsedAmount,
+            issueDate: parsedDate,
+            dueDate,
+          },
+        })
+
+        refType = 'obligation'
+        refId = obligation.id
+        break
+      }
+
+      case 'capital_contribution':
+      case 'adjustment':
+        break
+    }
+
+    if (refType || refId) {
       await prisma.financialMovement.update({
         where: { id: movement.id },
         data: {
-          referenceType: referenceType || null,
-          referenceId: referenceId || null,
+          referenceType: refType || null,
+          referenceId: refId || null,
         },
       })
     }
@@ -356,39 +606,30 @@ export async function POST(request: Request) {
     await prisma.auditLog.create({
       data: {
         companyId,
-        userId: createdBy,
+        userId,
         action: 'create',
         entityType: 'financial_movement',
         entityId: movement.id,
-        newValues: JSON.stringify({ ...movement, referenceType, referenceId }),
+        newValues: JSON.stringify({
+          transactionId: movement.transactionId,
+          movementType,
+          amount: parsedAmount,
+          direction,
+          referenceType: refType,
+          referenceId: refId,
+        }),
       },
     })
 
-    return NextResponse.json({ ...movement, referenceType, referenceId }, { status: 201 })
+    return NextResponse.json(
+      { ...movement, referenceType: refType, referenceId: refId },
+      { status: 201 }
+    )
   } catch (error) {
     console.error('Error creating movement:', error)
     return NextResponse.json(
       { error: 'Error al crear el movimiento' },
       { status: 500 }
     )
-  }
-}
-
-function movementTypeToContactType(movementType: string): string {
-  switch (movementType) {
-    case 'sale':
-      return 'client'
-    case 'purchase':
-      return 'supplier'
-    case 'obligation_received':
-      return 'supplier'
-    case 'obligation_payment':
-      return 'supplier'
-    case 'ar_payment':
-      return 'client'
-    case 'ap_payment':
-      return 'supplier'
-    default:
-      return 'other'
   }
 }

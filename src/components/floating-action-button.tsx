@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, ShoppingBag, Receipt, Package, Wallet } from 'lucide-react'
+import { Plus, ShoppingBag, Receipt, Package, Wallet, Wrench } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import MovementForm from './movement-form'
 
@@ -9,6 +9,7 @@ const ACTIONS = [
   { label: 'Nueva venta', icon: ShoppingBag, href: '/sales', color: 'text-success' },
   { label: 'Nuevo gasto', icon: Receipt, href: '/expenses', color: 'text-danger' },
   { label: 'Nueva compra', icon: Package, href: '/purchases', color: 'text-warning' },
+  { label: 'Nueva OT', icon: Wrench, href: '/work-orders', color: 'text-blue' },
   { label: 'Movimiento', icon: Wallet, action: 'movement' as const, color: 'text-blue' },
 ]
 

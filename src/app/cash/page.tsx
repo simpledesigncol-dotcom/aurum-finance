@@ -1,135 +1,382 @@
-export const dynamic = 'force-dynamic'
+'use client'
 
-import { prisma } from '@/lib/prisma'
-import { getCashRegisterBalance } from '@/lib/balances'
-import { formatCurrency, formatDate } from '@/lib/utils'
-import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, RefreshCw } from 'lucide-react'
+import { useState, useEffect, useCallback, useTransition } from 'react'
+import {
+  Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft,
+  Calculator, Loader2, Check,
+} from 'lucide-react'
+import { formatCurrency, formatDate, formatShortDate, movementTypeLabel } from '@/lib/utils'
+import { useToast } from '@/components/ui/toast'
 import MovementButton from '@/components/movement-button'
 
-async function getCashData() {
-  const cashRegisters = await prisma.cashRegister.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 1,
-  })
+interface CashRegisterData {
+  id: string
+  name: string
+  type: string
+  openingBalance: number
+  status: string
+  physicalCount: number | null
+  difference: number | null
+  balance: number
+}
 
-  const movements = await prisma.financialMovement.findMany({
-    where: { sourceType: 'cash_register', status: 'confirmed' },
-    orderBy: { movementDate: 'desc' },
-    take: 50,
-    include: {
-      category: true,
-      contact: true,
-    },
-  })
+interface Movement {
+  id: string
+  transactionId: string
+  movementType: string
+  amount: number
+  direction: string
+  movementDate: string
+  description: string | null
+  sourceId: string
+  contact: { name: string } | null
+}
 
-  const register = cashRegisters[0] || null
-  const currentBalance = register ? await getCashRegisterBalance(register.id) : 0
+interface Reconciliation {
+  id: string
+  registerId: string
+  systemBalance: number
+  physicalCount: number
+  difference: number
+  notes: string | null
+  createdAt: string
+  reconciler: { name: string } | null
+}
+
+export default function CashPage() {
+  const [general, setGeneral] = useState<CashRegisterData | null>(null)
+  const [minor, setMinor] = useState<CashRegisterData | null>(null)
+  const [movements, setMovements] = useState<Movement[]>([])
+  const [reconciliations, setReconciliations] = useState<Reconciliation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [physicalCount, setPhysicalCount] = useState('')
+  const [arqueoNotes, setArqueoNotes] = useState('')
+  const [isPending, startTransition] = useTransition()
+  const { toast } = useToast()
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [regRes, movRes, recRes] = await Promise.all([
+        fetch('/api/cash-register/default'),
+        fetch('/api/movements?sourceType=cash_register&limit=200'),
+        fetch('/api/cash-register/reconciliations?limit=10'),
+      ])
+      const regData = await regRes.json()
+      const movData = await movRes.json()
+      const recData = await recRes.json()
+
+      setGeneral(regData.general)
+      setMinor(regData.minor)
+      setMovements(Array.isArray(movData.movements) ? movData.movements : [])
+      setReconciliations(Array.isArray(recData.reconciliations) ? recData.reconciliations : [])
+    } catch {
+      console.error('Error fetching cash data')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchData() }, [fetchData])
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const todayMovements = movements.filter(m => {
-    const d = new Date(m.movementDate)
-    d.setHours(0, 0, 0, 0)
-    return d.getTime() === today.getTime()
-  })
-
-  const totalIncome = todayMovements
-    .filter(m => m.direction === 'in')
-    .reduce((sum, m) => sum + Number(m.amount), 0)
-
-  const totalExpenses = todayMovements
-    .filter(m => m.direction === 'out')
-    .reduce((sum, m) => sum + Number(m.amount), 0)
-
-  return {
-    register,
-    currentBalance,
-    movements,
-    todayIncome: totalIncome,
-    todayExpenses: totalExpenses,
-    todayNet: totalIncome - totalExpenses,
+  const getTodayStats = (registerId: string) => {
+    const todayMovements = movements.filter((m) => {
+      if (m.sourceId !== registerId) return false
+      const d = new Date(m.movementDate)
+      d.setHours(0, 0, 0, 0)
+      return d.getTime() === today.getTime()
+    })
+    const income = todayMovements
+      .filter((m) => m.direction === 'in')
+      .reduce((s, m) => s + m.amount, 0)
+    const expenses = todayMovements
+      .filter((m) => m.direction === 'out')
+      .reduce((s, m) => s + m.amount, 0)
+    return { income, expenses, net: income - expenses }
   }
-}
 
-export default async function CashPage() {
-  const data = await getCashData()
+  const getRecentMovements = (registerId: string, limit = 3) => {
+    return movements.filter((m) => m.sourceId === registerId).slice(0, limit)
+  }
+
+  const handleArqueo = async () => {
+    if (!minor || !physicalCount) return
+    const count = parseFloat(physicalCount)
+    if (isNaN(count) || count < 0) return
+
+    startTransition(async () => {
+      try {
+        const res = await fetch('/api/cash-register/reconciliations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            registerId: minor.id,
+            physicalCount: count,
+            notes: arqueoNotes || null,
+          }),
+        })
+        if (!res.ok) throw new Error('Failed')
+        toast('success', 'Arqueo registrado correctamente')
+        setPhysicalCount('')
+        setArqueoNotes('')
+        fetchData()
+      } catch {
+        toast('error', 'Error al registrar el arqueo')
+      }
+    })
+  }
+
+  const allMovements = [...movements].sort(
+    (a, b) => new Date(b.movementDate).getTime() - new Date(a.movementDate).getTime()
+  )
+
+  if (loading) {
+    return (
+      <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-5 animate-fade-in">
+        <div className="space-y-2">
+          <div className="h-7 w-32 bg-muted rounded-lg animate-pulse" />
+          <div className="h-4 w-48 bg-muted rounded-lg animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="rounded-xl border border-border p-5 space-y-4">
+              <div className="h-5 w-40 bg-muted rounded animate-pulse" />
+              <div className="h-8 w-32 bg-muted rounded animate-pulse" />
+              <div className="h-4 w-full bg-muted rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const generalStats = general ? getTodayStats(general.id) : { income: 0, expenses: 0, net: 0 }
+  const minorStats = minor ? getTodayStats(minor.id) : { income: 0, expenses: 0, net: 0 }
+  const generalRecent = general ? getRecentMovements(general.id) : []
+  const minorRecent = minor ? getRecentMovements(minor.id) : []
+  const minorDifference = minor && physicalCount
+    ? parseFloat(physicalCount) - (minor.balance)
+    : null
 
   return (
     <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Caja</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Estado actual y movimientos del dia</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Control de caja general y caja menor</p>
         </div>
-        <MovementButton registerId={data.register?.id} />
+        <MovementButton registerId={general?.id} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          title="Balance actual"
-          value={data.currentBalance}
-          icon={<Wallet size={15} strokeWidth={1.8} />}
-          variant="primary"
-        />
-        <StatCard
-          title="Ingresos hoy"
-          value={data.todayIncome}
-          icon={<TrendingUp size={15} strokeWidth={1.8} />}
-          variant="success"
-        />
-        <StatCard
-          title="Gastos hoy"
-          value={data.todayExpenses}
-          icon={<TrendingDown size={15} strokeWidth={1.8} />}
-          variant="danger"
-        />
-        <StatCard
-          title="Neto hoy"
-          value={data.todayNet}
-          icon={<RefreshCw size={15} strokeWidth={1.8} />}
-          variant={data.todayNet >= 0 ? 'success' : 'danger'}
-        />
-      </div>
-
-      {data.register && (
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-lg bg-blue/[0.08] flex items-center justify-center">
                 <Wallet size={16} className="text-blue" />
               </div>
               <div>
-                <p className="text-sm font-medium">{data.register.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  Balance inicial: {formatCurrency(Number(data.register.openingBalance))} · Calculado desde movimientos
-                </p>
+                <h2 className="text-sm font-semibold">{general?.name || 'Caja General'}</h2>
+                <p className="text-xs text-muted-foreground">Balance inicial: {formatCurrency(general?.openingBalance || 0)}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                data.register.status === 'open'
-                  ? 'bg-success/[0.08] text-success'
-                  : 'bg-muted text-muted-foreground'
-              }`}>
-                {data.register.status === 'open' ? 'Abierta' : 'Cerrada'}
-              </span>
-              {data.register.physicalCount != null && (
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  Fisico: {formatCurrency(Number(data.register.physicalCount))}
-                </span>
-              )}
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              {general?.status === 'open' ? 'Abierta' : 'Cerrada'}
+            </span>
+          </div>
+
+          <p className="text-2xl font-bold tabular-nums tracking-tight mb-4">{formatCurrency(general?.balance || 0)}</p>
+
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="rounded-lg bg-muted/50 p-2.5">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingUp size={12} className="text-emerald-600" />
+                <span className="text-[10px] font-medium text-muted-foreground uppercase">Ingresos</span>
+              </div>
+              <p className="text-sm font-semibold tabular-nums text-emerald-600">{formatCurrency(generalStats.income)}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-2.5">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingDown size={12} className="text-red-600" />
+                <span className="text-[10px] font-medium text-muted-foreground uppercase">Gastos</span>
+              </div>
+              <p className="text-sm font-semibold tabular-nums text-red-600">{formatCurrency(generalStats.expenses)}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-2.5">
+              <span className="text-[10px] font-medium text-muted-foreground uppercase block mb-1">Neto</span>
+              <p className={`text-sm font-semibold tabular-nums ${generalStats.net >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {formatCurrency(generalStats.net)}
+              </p>
             </div>
           </div>
+
+          {generalRecent.length > 0 && (
+            <div className="space-y-0 divide-y divide-border">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1.5">Últimos movimientos</p>
+              {generalRecent.map((m) => (
+                <div key={m.id} className="flex items-center gap-2.5 py-2 first:pt-0 last:pb-0">
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${m.direction === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                    {m.direction === 'in' ? <ArrowDownLeft size={12} strokeWidth={2} /> : <ArrowUpRight size={12} strokeWidth={2} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{m.description || movementTypeLabel(m.movementType)}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatShortDate(m.movementDate)}</p>
+                  </div>
+                  <span className={`text-xs font-semibold tabular-nums shrink-0 ${m.direction === 'in' ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {m.direction === 'in' ? '+' : '-'}{formatCurrency(m.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="bg-card rounded-xl border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/[0.08] flex items-center justify-center">
+                <Wallet size={16} className="text-amber-600" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold">{minor?.name || 'Caja Menor'}</h2>
+                <p className="text-xs text-muted-foreground">Balance inicial: {formatCurrency(minor?.openingBalance || 0)}</p>
+              </div>
+            </div>
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${minor?.status === 'open' ? 'bg-emerald-50 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${minor?.status === 'open' ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
+              {minor?.status === 'open' ? 'Abierta' : 'Cerrada'}
+            </span>
+          </div>
+
+          <p className="text-2xl font-bold tabular-nums tracking-tight mb-4">{formatCurrency(minor?.balance || 0)}</p>
+
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="rounded-lg bg-muted/50 p-2.5">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingUp size={12} className="text-emerald-600" />
+                <span className="text-[10px] font-medium text-muted-foreground uppercase">Ingresos</span>
+              </div>
+              <p className="text-sm font-semibold tabular-nums text-emerald-600">{formatCurrency(minorStats.income)}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-2.5">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingDown size={12} className="text-red-600" />
+                <span className="text-[10px] font-medium text-muted-foreground uppercase">Gastos</span>
+              </div>
+              <p className="text-sm font-semibold tabular-nums text-red-600">{formatCurrency(minorStats.expenses)}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-2.5">
+              <span className="text-[10px] font-medium text-muted-foreground uppercase block mb-1">Neto</span>
+              <p className={`text-sm font-semibold tabular-nums ${minorStats.net >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {formatCurrency(minorStats.net)}
+              </p>
+            </div>
+          </div>
+
+          {minorRecent.length > 0 && (
+            <div className="space-y-0 divide-y divide-border mb-4">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1.5">Últimos movimientos</p>
+              {minorRecent.map((m) => (
+                <div key={m.id} className="flex items-center gap-2.5 py-2 first:pt-0 last:pb-0">
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${m.direction === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                    {m.direction === 'in' ? <ArrowDownLeft size={12} strokeWidth={2} /> : <ArrowUpRight size={12} strokeWidth={2} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{m.description || movementTypeLabel(m.movementType)}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatShortDate(m.movementDate)}</p>
+                  </div>
+                  <span className={`text-xs font-semibold tabular-nums shrink-0 ${m.direction === 'in' ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {m.direction === 'in' ? '+' : '-'}{formatCurrency(m.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {minor && (
+            <div className="border border-border rounded-lg p-3.5 bg-muted/30">
+              <div className="flex items-center gap-2 mb-3">
+                <Calculator size={14} className="text-amber-600" />
+                <span className="text-xs font-semibold">Arqueo de caja</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div>
+                  <span className="text-[10px] text-muted-foreground block mb-0.5">Saldo sistema</span>
+                  <p className="text-sm font-bold tabular-nums">{formatCurrency(minor.balance)}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block mb-0.5">Efectivo contado</span>
+                  <input
+                    type="number"
+                    value={physicalCount}
+                    onChange={(e) => setPhysicalCount(e.target.value)}
+                    placeholder="0"
+                    min="0"
+                    step="100"
+                    className="w-full px-2 py-1 text-sm font-semibold tabular-nums rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/40 transition-all"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block mb-0.5">Diferencia</span>
+                  <p className={`text-sm font-bold tabular-nums ${minorDifference !== null
+                    ? minorDifference === 0
+                      ? 'text-emerald-600'
+                      : 'text-red-600'
+                    : 'text-muted-foreground'
+                  }`}>
+                    {minorDifference !== null ? formatCurrency(minorDifference) : '—'}
+                  </p>
+                </div>
+              </div>
+              <input
+                type="text"
+                value={arqueoNotes}
+                onChange={(e) => setArqueoNotes(e.target.value)}
+                placeholder="Notas del arqueo (opcional)"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-card mb-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all placeholder:text-muted-foreground/50"
+              />
+              <button
+                onClick={handleArqueo}
+                disabled={isPending || !physicalCount}
+                className="w-full py-2 rounded-lg bg-amber-600 text-white text-xs font-medium hover:bg-amber-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+              >
+                {isPending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                Registrar arqueo
+              </button>
+            </div>
+          )}
+
+          {reconciliations.length > 0 && (
+            <div className="mt-3 space-y-0 divide-y divide-border">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1.5">Historial de arqueos</p>
+              {reconciliations.filter(r => r.registerId === minor?.id).slice(0, 5).map((r) => (
+                <div key={r.id} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+                  <div>
+                    <p className="text-xs font-medium">{formatDate(r.createdAt)}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Sistema: {formatCurrency(r.systemBalance)} · Contado: {formatCurrency(r.physicalCount)}
+                    </p>
+                  </div>
+                  <span className={`text-xs font-semibold tabular-nums ${r.difference === 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {r.difference === 0 ? 'Cuadra' : formatCurrency(r.difference)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="bg-card rounded-xl border border-border">
-        <div className="px-5 py-3.5 border-b border-border">
+        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold text-sm">Movimientos recientes</h2>
+          <span className="text-xs text-muted-foreground">{allMovements.length} registros</span>
         </div>
-        <div className="divide-y divide-border">
-          {data.movements.length === 0 ? (
+        <div className="divide-y divide-border max-h-96 overflow-y-auto">
+          {allMovements.length === 0 ? (
             <div className="px-5 py-12 text-center">
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
                 <Wallet size={18} className="text-muted-foreground/60" />
@@ -138,72 +385,42 @@ export default async function CashPage() {
               <p className="text-xs text-muted-foreground mt-0.5">Haz clic en Registrar para agregar el primero</p>
             </div>
           ) : (
-            data.movements.map((m) => (
-              <div key={m.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors duration-150">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                  m.direction === 'in'
-                    ? 'bg-success/[0.08] text-success'
-                    : 'bg-danger/[0.08] text-danger'
-                }`}>
-                  {m.direction === 'in' ? <ArrowDownLeft size={14} strokeWidth={1.8} /> : <ArrowUpRight size={14} strokeWidth={1.8} />}
+            allMovements.slice(0, 50).map((m) => {
+              const registerLabel =
+                general && m.sourceId === general.id
+                  ? general.name
+                  : minor && m.sourceId === minor.id
+                    ? minor.name
+                    : null
+              return (
+                <div key={m.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors duration-150">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${m.direction === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                    {m.direction === 'in' ? <ArrowDownLeft size={14} strokeWidth={1.8} /> : <ArrowUpRight size={14} strokeWidth={1.8} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {m.description || m.movementType}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate min-w-0">
+                      <span className="font-mono text-[11px] text-muted-foreground/70 mr-1">{m.transactionId}</span>
+                      {m.contact?.name && `· ${m.contact.name}`}
+                      {registerLabel && <span className="ml-1 text-muted-foreground/60">· {registerLabel}</span>}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-sm font-semibold tabular-nums ${m.direction === 'in' ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {m.direction === 'in' ? '+' : '-'}{formatCurrency(m.amount)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(m.movementDate)}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {m.description || m.movementType}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate min-w-0">
-                    <span className="font-mono text-[11px] text-muted-foreground/70 mr-1">{m.transactionId}</span>
-                    {m.category?.name || m.movementType}
-                    {m.contact && ` · ${m.contact.name}`}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className={`text-sm font-semibold tabular-nums ${
-                    m.direction === 'in' ? 'text-success' : 'text-danger'
-                  }`}>
-                    {m.direction === 'in' ? '+' : '-'}{formatCurrency(Number(m.amount))}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(m.movementDate)}
-                  </p>
-                </div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>
-    </div>
-  )
-}
-
-function StatCard({
-  title,
-  value,
-  icon,
-  variant,
-}: {
-  title: string
-  value: number
-  icon: React.ReactNode
-  variant: 'primary' | 'success' | 'danger'
-}) {
-  const variantClasses = {
-    primary: 'bg-blue/[0.08] text-blue',
-    success: 'bg-success/[0.08] text-success',
-    danger: 'bg-danger/[0.08] text-danger',
-  }
-
-  return (
-    <div className="bg-card rounded-xl border border-border p-4 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-all duration-200">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</span>
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${variantClasses[variant]}`}>
-          {icon}
-        </div>
-      </div>
-      <p className="text-xl font-bold tabular-nums tracking-tight">
-        {formatCurrency(value)}
-      </p>
     </div>
   )
 }

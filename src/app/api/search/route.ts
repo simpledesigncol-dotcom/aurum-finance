@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     const term = `%${query}%`
   const results: SearchResult[] = []
 
-  const [movements, sales, expenses, purchases, contacts, obligations, ars, aps, documents] = await Promise.all([
+  const [movements, sales, expenses, purchases, contacts, obligations, ars, aps, documents, workOrders] = await Promise.all([
     prisma.financialMovement.findMany({
       where: {
         OR: [
@@ -135,6 +135,21 @@ export async function GET(request: Request) {
       take: 5,
       orderBy: { createdAt: 'desc' },
     }),
+
+    prisma.workOrder.findMany({
+      where: {
+        OR: [
+          { orderNumber: { contains: query, mode: 'insensitive' as const } },
+          { vehiclePlate: { contains: query, mode: 'insensitive' as const } },
+          { vehicleInfo: { contains: query, mode: 'insensitive' as const } },
+          { description: { contains: query, mode: 'insensitive' as const } },
+          { contact: { name: { contains: query, mode: 'insensitive' as const } } },
+        ],
+      },
+      take: 5,
+      include: { contact: true },
+      orderBy: { createdAt: 'desc' },
+    }),
   ])
 
   movements.forEach(m => results.push({
@@ -223,6 +238,16 @@ export async function GET(request: Request) {
     title: d.name,
     subtitle: d.documentType,
     url: `/documents`,
+  }))
+
+  workOrders.forEach(wo => results.push({
+    id: wo.id,
+    type: 'work_order',
+    title: `${wo.orderNumber} · ${wo.vehicleInfo || wo.vehiclePlate || 'Sin vehículo'}`,
+    subtitle: wo.contact?.name || wo.description || wo.status,
+    url: `/work-orders/${wo.id}`,
+    amount: Number(wo.saleAmount),
+    status: wo.status,
   }))
 
   return NextResponse.json({

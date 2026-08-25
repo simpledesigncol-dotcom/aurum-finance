@@ -23,6 +23,13 @@
   --color-blue: var(--blue);
   --color-blue-foreground: var(--blue-fg);
   --color-navy: var(--navy);
+  --color-gold: var(--gold);
+  --color-gold-muted: var(--gold-muted);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-fg: var(--sidebar-fg);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-border: var(--sidebar-border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius-sm: 0.375rem;
@@ -31,33 +38,35 @@
 }
 
 :root {
-  --background: #F8FAFC;
-  --foreground: #0F172A;
-  --muted: #F1F5F9;
-  --muted-fg: #64748B;
+  --background: #FAFBFC;
+  --foreground: #1A1A2E;
+  --muted: #F4F5F7;
+  --muted-fg: #6B7280;
   --card: #FFFFFF;
-  --card-fg: #0F172A;
-  --border-color: #E2E8F0;
-  --primary: #0F172A;
+  --card-fg: #1A1A2E;
+  --border-color: #E8ECF0;
+  --primary: #1A1A2E;
   --primary-fg: #FFFFFF;
-  --secondary: #F8FAFC;
-  --secondary-fg: #334155;
+  --secondary: #FAFBFC;
+  --secondary-fg: #374151;
   --accent: #EFF6FF;
   --accent-fg: #1E40AF;
-  --success: #16A34A;
+  --success: #22C55E;
   --success-fg: #FFFFFF;
-  --danger: #DC2626;
+  --danger: #EF4444;
   --danger-fg: #FFFFFF;
   --warning: #F59E0B;
   --warning-fg: #FFFFFF;
-  --blue: #2563EB;
+  --blue: #3B82F6;
   --blue-fg: #FFFFFF;
-  --navy: #0F172A;
+  --navy: #1A1A2E;
+  --gold: #B8860B;
+  --gold-muted: #B8860B1A;
   --sidebar-bg: #FFFFFF;
-  --sidebar-fg: #64748B;
-  --sidebar-hover: #F8FAFC;
+  --sidebar-fg: #6B7280;
+  --sidebar-hover: #F4F5F7;
   --sidebar-active: #EFF6FF;
-  --sidebar-border: #E2E8F0;
+  --sidebar-border: #E8ECF0;
 }
 
 body {
@@ -72,6 +81,18 @@ body {
   border-color: var(--border-color);
 }
 
+::selection {
+  background: rgba(184, 134, 11, 0.12);
+  color: var(--foreground);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
@@ -83,12 +104,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #D1D5DB;
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #9CA3AF;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB transparent;
 }
 
 /* Animations */
@@ -98,12 +125,12 @@ body {
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.98); }
+  from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: scale(1); }
 }
 
@@ -112,11 +139,11 @@ body {
 }
 
 .animate-slide-up {
-  animation: slideUp 0.25s ease-out both;
+  animation: slideUp 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.2s ease-out both;
+  animation: scaleIn 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Stagger children */
@@ -126,6 +153,21 @@ body {
 .stagger > *:nth-child(4) { animation-delay: 90ms; }
 .stagger > *:nth-child(5) { animation-delay: 120ms; }
 .stagger > *:nth-child(6) { animation-delay: 150ms; }
+.stagger > *:nth-child(7) { animation-delay: 180ms; }
+.stagger > *:nth-child(8) { animation-delay: 210ms; }
+.stagger > *:nth-child(9) { animation-delay: 240ms; }
+.stagger > *:nth-child(10) { animation-delay: 270ms; }
+
+/* Interactive transitions */
+button,
+a,
+input,
+select,
+textarea {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-duration: 150ms;
+}
 
 /* Bar chart */
 .bar-chart-bar {
@@ -137,7 +179,48 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Selection */
-::selection {
-  background: rgba(37, 99, 235, 0.12);
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+
+  .no-print,
+  nav,
+  aside,
+  button,
+  .floating-action-button {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  a {
+    color: black !important;
+    text-decoration: underline;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+
+  th, td {
+    border: 1px solid #ccc !important;
+    padding: 4px 8px !important;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
 }

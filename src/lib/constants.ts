@@ -1,24 +1,60 @@
 export const EVENT_TYPES = [
-  { id: 'sale', label: 'Vendí algo', icon: '💰', color: 'green' },
-  { id: 'purchase', label: 'Compré algo', icon: '🛒', color: 'orange' },
-  { id: 'expense', label: 'Pagué algo', icon: '📤', color: 'red' },
-  { id: 'ar_payment', label: 'Me pagaron', icon: '📥', color: 'blue' },
-  { id: 'obligation_received', label: 'Me prestaron', icon: '🤝', color: 'purple' },
-  { id: 'obligation_payment', label: 'Pagué deuda', icon: '🏦', color: 'purple' },
-  { id: 'transfer', label: 'Transferí', icon: '🔄', color: 'gray' },
-  { id: 'capital_contribution', label: 'Aporte capital', icon: '📈', color: 'green' },
-  { id: 'adjustment', label: 'Ajuste', icon: '📊', color: 'gray' },
+  { id: 'income', label: 'Ingreso', icon: '📥', color: 'green', direction: 'in' },
+  { id: 'expense', label: 'Gasto', icon: '📤', color: 'red', direction: 'out' },
+  { id: 'transfer', label: 'Transferencia', icon: '🔄', color: 'gray', direction: 'transfer' },
+  { id: 'sale', label: 'Venta', icon: '💰', color: 'green', direction: 'in' },
+  { id: 'purchase', label: 'Compra', icon: '🛒', color: 'orange', direction: 'out' },
+  { id: 'ar_payment', label: 'Cobro CxC', icon: '📥', color: 'blue', direction: 'in' },
+  { id: 'ap_payment', label: 'Pago CxP', icon: '📤', color: 'red', direction: 'out' },
+  { id: 'obligation_payment', label: 'Pago deuda', icon: '🏦', color: 'purple', direction: 'out' },
+  { id: 'obligation_received', label: 'Préstamo', icon: '🤝', color: 'purple', direction: 'in' },
+  { id: 'capital_contribution', label: 'Aporte capital', icon: '📈', color: 'green', direction: 'in' },
+  { id: 'adjustment', label: 'Ajuste', icon: '📊', color: 'gray', direction: 'out' },
 ] as const
 
 export const PAYMENT_TYPES = [
-  { id: 'cash', label: 'Efectivo', icon: '💵' },
-  { id: 'nequi', label: 'Nequi', icon: '📱' },
-  { id: 'daviplata', label: 'Daviplata', icon: '📱' },
-  { id: 'tc', label: 'Tarjeta crédito', icon: '💳' },
-  { id: 'td', label: 'Tarjeta débito', icon: '💳' },
-  { id: 'transfer', label: 'Transferencia', icon: '🏦' },
-  { id: 'credit', label: 'Crédito', icon: '📝' },
-  { id: 'partial', label: 'Parcial', icon: '🔀' },
+  { id: 'cash', label: 'Efectivo', icon: '💵', category: 'physical' },
+  { id: 'transfer', label: 'Transferencia', icon: '🏦', category: 'digital' },
+  { id: 'td', label: 'Tarjeta débito', icon: '💳', category: 'card' },
+  { id: 'tc', label: 'Tarjeta crédito', icon: '💳', category: 'card' },
+  { id: 'datafono', label: 'Datáfono', icon: '📱', category: 'card' },
+  { id: 'nequi', label: 'Nequi', icon: '📲', category: 'digital' },
+  { id: 'daviplata', label: 'Daviplata', icon: '📲', category: 'digital' },
+  { id: 'pse', label: 'PSE', icon: '🌐', category: 'digital' },
+  { id: 'cheque', label: 'Cheque', icon: '📄', category: 'physical' },
+  { id: 'credit', label: 'Crédito', icon: '📝', category: 'other' },
+  { id: 'qr', label: 'QR', icon: '📱', category: 'digital' },
+] as const
+
+export const MOVEMENT_TYPES = [
+  { id: 'income', label: 'Ingreso', color: 'success' },
+  { id: 'expense', label: 'Gasto', color: 'danger' },
+  { id: 'transfer', label: 'Transferencia', color: 'blue' },
+  { id: 'sale', label: 'Venta', color: 'success' },
+  { id: 'purchase', label: 'Compra', color: 'warning' },
+  { id: 'ar_payment', label: 'Cobro CxC', color: 'success' },
+  { id: 'ap_payment', label: 'Pago CxP', color: 'danger' },
+  { id: 'obligation_payment', label: 'Pago deuda', color: 'danger' },
+  { id: 'obligation_received', label: 'Préstamo', color: 'blue' },
+  { id: 'capital_contribution', label: 'Aporte capital', color: 'success' },
+  { id: 'adjustment', label: 'Ajuste', color: 'muted' },
+] as const
+
+export const MOVEMENT_STATUSES = [
+  { id: 'confirmed', label: 'Confirmado', color: 'success' },
+  { id: 'pending', label: 'Pendiente', color: 'warning' },
+  { id: 'draft', label: 'Borrador', color: 'muted' },
+  { id: 'cancelled', label: 'Anulado', color: 'danger' },
+] as const
+
+export const QUICK_FILTERS = [
+  { id: 'today', label: 'Hoy' },
+  { id: 'week', label: 'Esta semana' },
+  { id: 'month', label: 'Este mes' },
+  { id: 'no-ot', label: 'Sin OT' },
+  { id: 'no-receipt', label: 'Sin comprobante' },
+  { id: 'cash', label: 'Efectivo' },
+  { id: 'pending', label: 'Pendientes' },
 ] as const
 
 export const OBLIGATION_TYPES = [
@@ -85,12 +121,32 @@ export const OBLIGATION_PRIORITIES = [
   { id: 'critical', label: 'Crítica', color: 'danger' },
 ] as const
 
+export const WORK_ORDER_STATUSES = [
+  { id: 'open', label: 'Abierta', color: 'blue' },
+  { id: 'in_progress', label: 'En proceso', color: 'warning' },
+  { id: 'completed', label: 'Completada', color: 'success' },
+  { id: 'closed', label: 'Cerrada', color: 'muted' },
+  { id: 'cancelled', label: 'Anulada', color: 'danger' },
+] as const
+
+export const SERVICE_TYPES = [
+  { id: 'pintura', label: 'Pintura' },
+  { id: 'latoneria', label: 'Latonería' },
+  { id: 'detailing', label: 'Detailing' },
+  { id: 'mecanica', label: 'Mecánica' },
+  { id: 'electrica', label: 'Eléctrica' },
+  { id: 'repuestos', label: 'Repuestos' },
+  { id: 'otro', label: 'Otro' },
+] as const
+
 export const SIDEBAR_ITEMS = [
   { label: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard' },
+  { label: 'Movimientos', href: '/movements', icon: 'ArrowLeftRight' },
   { label: 'Caja', href: '/cash', icon: 'Wallet' },
   { label: 'Bancos', href: '/banks', icon: 'Building2' },
   { label: 'Tesorería', href: '/treasury', icon: 'TrendingUp' },
   { section: 'Operaciones' },
+  { label: 'Órdenes de Trabajo', href: '/work-orders', icon: 'Wrench' },
   { label: 'Ventas', href: '/sales', icon: 'ShoppingBag' },
   { label: 'Gastos', href: '/expenses', icon: 'Receipt' },
   { label: 'Compras', href: '/purchases', icon: 'Package' },
