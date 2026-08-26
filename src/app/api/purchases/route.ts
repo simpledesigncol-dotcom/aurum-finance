@@ -95,6 +95,7 @@ export async function POST(request: Request) {
           movementType: 'purchase',
           amount: total,
           direction: 'out',
+          occurredAt: new Date(purchaseDate),
           movementDate: new Date(purchaseDate),
           description: `Compra #${purchase.id.slice(0, 8)}`,
           sourceType: 'cash_register',

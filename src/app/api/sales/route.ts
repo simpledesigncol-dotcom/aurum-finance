@@ -99,6 +99,7 @@ export async function POST(request: Request) {
           movementType: 'sale',
           amount: total,
           direction: 'in',
+          occurredAt: new Date(saleDate),
           movementDate: new Date(saleDate),
           description: `Venta #${sale.id.slice(0, 8)}`,
           sourceType: 'cash_register',

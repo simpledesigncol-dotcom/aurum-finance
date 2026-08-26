@@ -67,6 +67,7 @@ export async function POST(
         movementType: 'expense',
         amount,
         direction: 'out',
+        occurredAt: payDate,
         movementDate: payDate,
         sourceType: srcType,
         sourceId: srcId,

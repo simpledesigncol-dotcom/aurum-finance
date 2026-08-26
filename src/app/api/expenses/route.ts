@@ -75,6 +75,7 @@ export async function POST(request: Request) {
         movementType: 'expense',
         amount,
         direction: 'out',
+        occurredAt: new Date(expenseDate),
         movementDate: new Date(expenseDate),
         description: description || `Gasto`,
         categoryId: categoryId || null,

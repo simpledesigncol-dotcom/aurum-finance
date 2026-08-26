@@ -61,6 +61,7 @@ export async function POST(
         movementType: 'income',
         amount,
         direction: 'in',
+        occurredAt: paymentDate ? new Date(paymentDate) : new Date(),
         movementDate: paymentDate ? new Date(paymentDate) : new Date(),
         sourceType: 'accounts_receivable',
         sourceId: id,

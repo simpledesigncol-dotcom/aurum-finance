@@ -77,6 +77,7 @@ export async function POST(
         movementType: 'obligation_payment',
         amount,
         direction: 'out',
+        occurredAt: payDate,
         movementDate: payDate,
         sourceType: sourceType || 'cash_register',
         sourceId: registerId || await getDefaultRegisterId(),
