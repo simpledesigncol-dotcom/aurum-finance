@@ -233,7 +233,8 @@ export default function ReportsPage() {
     existing.count++
     expenseCategories.set(key, existing)
   })
-  const sortedExpenseCategories = Array.from(expenseCategories.values())
+  const sortedExpenseCategories = Array.from(expenseCategories.entries())
+    .map(([name, data]) => ({ name, ...data }))
     .sort((a, b) => b.total - a.total)
   const totalCatExpenses = sortedExpenseCategories.reduce((s, c) => s + c.total, 0)
 
@@ -245,7 +246,9 @@ export default function ReportsPage() {
     existing.count++
     incomeCategories.set(key, existing)
   })
-  const sortedIncomeCategories = Array.from(incomeCategories.values()).sort((a, b) => b.total - a.total)
+  const sortedIncomeCategories = Array.from(incomeCategories.entries())
+    .map(([name, data]) => ({ name, ...data }))
+    .sort((a, b) => b.total - a.total)
 
   const contactIncome = new Map<string, number>()
   periodMovements.filter((m) => m.direction === 'in' && m.contact).forEach((m) => {
