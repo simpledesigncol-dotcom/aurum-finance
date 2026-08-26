@@ -140,6 +140,7 @@ model Contact {
   accountsPayable    AccountsPayable[]
   obligations        Obligation[]
   agreements         Agreement[]
+  workOrders         WorkOrder[]
 }
 
 model CashRegister {
