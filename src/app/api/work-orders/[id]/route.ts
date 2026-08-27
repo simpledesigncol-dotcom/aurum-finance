@@ -7,61 +7,66 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
+  try {
+    const { id } = await params
 
-  const order = await prisma.workOrder.findUnique({
-    where: { id },
-    include: {
-      contact: true,
-      financialMovements: {
-        orderBy: { movementDate: 'desc' },
-        include: {
-          category: true,
-          contact: true,
+    const order = await prisma.workOrder.findUnique({
+      where: { id },
+      include: {
+        contact: true,
+        financialMovements: {
+          orderBy: { movementDate: 'desc' },
+          include: {
+            category: true,
+            contact: true,
+          },
         },
-      },
-      sales: {
-        include: {
-          items: true,
-          payments: true,
+        sales: {
+          include: {
+            items: true,
+            payments: true,
+          },
         },
+        creator: { select: { name: true, email: true } },
       },
-      creator: { select: { name: true, email: true } },
-    },
-  })
+    })
 
-  if (!order) {
-    return NextResponse.json(
-      { error: 'Orden de trabajo no encontrada' },
-      { status: 404 }
-    )
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Orden de trabajo no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const income = order.financialMovements
+      .filter(m => m.direction === 'in' && m.status === 'confirmed')
+      .reduce((sum, m) => sum + Number(m.amount), 0)
+
+    const costs = order.financialMovements
+      .filter(m => m.direction === 'out' && m.status === 'confirmed')
+      .reduce((sum, m) => sum + Number(m.amount), 0)
+
+    const totalPaid = order.sales.reduce((sum, s) => sum + s.amountPaid, 0)
+    const totalSales = order.sales.reduce((sum, s) => sum + s.total, 0)
+    const pendingReceivable = totalSales - totalPaid
+
+    const profit = income - costs
+    const margin = income > 0 ? (profit / income) * 100 : 0
+
+    return NextResponse.json({
+      ...order,
+      financials: {
+        income,
+        costs,
+        profit,
+        margin,
+        pendingReceivable: Math.max(0, pendingReceivable),
+      },
+    })
+  } catch (error) {
+    console.error('Error fetching work order:', error)
+    return NextResponse.json({ error: 'Error al cargar la orden' }, { status: 500 })
   }
-
-  const income = order.financialMovements
-    .filter(m => m.direction === 'in' && m.status === 'confirmed')
-    .reduce((sum, m) => sum + Number(m.amount), 0)
-
-  const costs = order.financialMovements
-    .filter(m => m.direction === 'out' && m.status === 'confirmed')
-    .reduce((sum, m) => sum + Number(m.amount), 0)
-
-  const totalPaid = order.sales.reduce((sum, s) => sum + s.amountPaid, 0)
-  const totalSales = order.sales.reduce((sum, s) => sum + s.total, 0)
-  const pendingReceivable = totalSales - totalPaid
-
-  const profit = income - costs
-  const margin = income > 0 ? (profit / income) * 100 : 0
-
-  return NextResponse.json({
-    ...order,
-    financials: {
-      income,
-      costs,
-      profit,
-      margin,
-      pendingReceivable: Math.max(0, pendingReceivable),
-    },
-  })
 }
 
 export async function PATCH(

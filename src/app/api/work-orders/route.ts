@@ -4,33 +4,38 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const status = searchParams.get('status')
-  const limit = parseInt(searchParams.get('limit') || '100')
-  const page = parseInt(searchParams.get('page') || '1')
-  const skip = (page - 1) * limit
+  try {
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const limit = parseInt(searchParams.get('limit') || '100')
+    const page = parseInt(searchParams.get('page') || '1')
+    const skip = (page - 1) * limit
 
-  const where: Record<string, unknown> = {}
-  if (status) where.status = status
+    const where: Record<string, unknown> = {}
+    if (status) where.status = status
 
-  const [orders, total] = await Promise.all([
-    prisma.workOrder.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit,
-      include: {
-        contact: { select: { id: true, name: true } },
-        _count: { select: { financialMovements: true } },
-      },
-    }),
-    prisma.workOrder.count({ where }),
-  ])
+    const [orders, total] = await Promise.all([
+      prisma.workOrder.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          contact: { select: { id: true, name: true } },
+          _count: { select: { financialMovements: true } },
+        },
+      }),
+      prisma.workOrder.count({ where }),
+    ])
 
-  return NextResponse.json({
-    orders,
-    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-  })
+    return NextResponse.json({
+      orders,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    })
+  } catch (error) {
+    console.error('Error fetching work orders:', error)
+    return NextResponse.json({ orders: [], pagination: { page: 1, limit: 100, total: 0, pages: 0 } })
+  }
 }
 
 export async function POST(request: Request) {
