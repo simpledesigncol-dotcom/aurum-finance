@@ -109,8 +109,6 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
             occurredAt: form.movementDate,
             movementDate: form.movementDate,
             description: form.description || getEventLabel(),
-            sourceType: 'cash_register',
-            sourceId: resolvedRegisterId || registerId || 'default',
             contactName: form.contactName || null,
             paymentType: form.paymentType,
             notes: form.notes || null,

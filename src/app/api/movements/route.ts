@@ -185,7 +185,11 @@ async function resolvePaymentSource(
     daviplata: { sourceType: 'bank_account', bankName: 'Daviplata' },
     tc: { sourceType: 'bank_account', bankName: 'Bancolombia' },
     td: { sourceType: 'bank_account', bankName: 'Bancolombia' },
+    datafono: { sourceType: 'bank_account', bankName: 'Bancolombia' },
     transfer: { sourceType: 'bank_account', bankName: 'Bancolombia' },
+    pse: { sourceType: 'bank_account', bankName: 'Bancolombia' },
+    cheque: { sourceType: 'bank_account', bankName: 'Bancolombia' },
+    qr: { sourceType: 'bank_account', bankName: 'Bancolombia' },
     credit: { sourceType: 'cash_register' },
     partial: { sourceType: 'cash_register' },
   }
