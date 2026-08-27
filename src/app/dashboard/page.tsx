@@ -214,7 +214,24 @@ async function getDashboardData() {
 }
 
 export default async function DashboardPage() {
-  const data = await getDashboardData()
+  let data
+  try {
+    data = await getDashboardData()
+  } catch {
+    const now = new Date()
+    data = {
+      totalAvailable: 0, totalCash: 0, totalBank: 0, pendingAR: 0, pendingAP: 0,
+      obligationBalance: 0, pendingARCount: 0, pendingAPCount: 0,
+      overdueAR: [], overdueAP: [], upcomingObligations: [],
+      pendingMovements: 0, last10Movements: [],
+      flow7Days: Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(now)
+        d.setDate(d.getDate() - (6 - i))
+        return { label: d.toLocaleDateString('es', { weekday: 'short' }), income: 0, expenses: 0 }
+      }),
+      netTrend: 0,
+    }
+  }
   const greeting = getGreeting()
 
   const totalCommitments = data.pendingAP + data.obligationBalance

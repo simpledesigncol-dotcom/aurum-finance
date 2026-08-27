@@ -61,7 +61,7 @@ CREATE TABLE "CashReconciliation" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "WorkOrder_company_id_order_number_key" ON "WorkOrder"("company_id", "order_number");
-CREATE INDEX "FinancialMovement_occurred_at_idx" ON "FinancialMovement"("companyId", "occurred_at");
+CREATE INDEX "FinancialMovement_occurred_at_idx" ON "FinancialMovement"("company_id", "occurred_at");
 CREATE INDEX "FinancialMovement_work_order_id_idx" ON "FinancialMovement"("work_order_id");
 
 -- AddForeignKey: WorkOrder

@@ -1,14 +1,13 @@
 -- ============================================================
--- COMPLETE FIX: Add all missing columns and tables
--- Run this in Supabase SQL Editor: https://supabase.com/dashboard/project/rvcfaaibvqxaqdxzrkxj/sql/new
+-- COMPLETE FIX — Run ALL of this in Supabase SQL Editor
+-- https://supabase.com/dashboard/project/rvcfaaibvqxaqdxzrkxj/sql/new
 -- ============================================================
 
--- 1. Obligation: add missing columns from original schema
-ALTER TABLE "Obligation" ADD COLUMN IF NOT EXISTS "payment_method_id" TEXT;
+-- 1. Obligation: add 4 missing columns
 ALTER TABLE "Obligation" ADD COLUMN IF NOT EXISTS "priority" TEXT NOT NULL DEFAULT 'normal';
 ALTER TABLE "Obligation" ADD COLUMN IF NOT EXISTS "is_recurring" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "Obligation" ADD COLUMN IF NOT EXISTS "next_due_date" TIMESTAMP(3);
-
+ALTER TABLE "Obligation" ADD COLUMN IF NOT EXISTS "payment_method_id" TEXT;
 DO $$ BEGIN
   ALTER TABLE "Obligation" ADD CONSTRAINT "Obligation_payment_method_id_fkey" 
     FOREIGN KEY ("payment_method_id") REFERENCES "PaymentMethod"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -63,9 +62,18 @@ CREATE TABLE IF NOT EXISTS "CashReconciliation" (
 );
 
 -- 7. Indexes
-CREATE UNIQUE INDEX IF NOT EXISTS "WorkOrder_company_id_order_number_key" ON "WorkOrder"("company_id", "order_number");
-CREATE INDEX IF NOT EXISTS "FinancialMovement_occurred_at_idx" ON "FinancialMovement"("companyId", "occurred_at");
-CREATE INDEX IF NOT EXISTS "FinancialMovement_work_order_id_idx" ON "FinancialMovement"("work_order_id");
+DO $$ BEGIN
+  CREATE UNIQUE INDEX "WorkOrder_company_id_order_number_key" ON "WorkOrder"("company_id", "order_number");
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE INDEX "FinancialMovement_occurred_at_idx" ON "FinancialMovement"("company_id", "occurred_at");
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE INDEX "FinancialMovement_work_order_id_idx" ON "FinancialMovement"("work_order_id");
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 8. Foreign Keys for WorkOrder
 DO $$ BEGIN
@@ -107,3 +115,14 @@ DO $$ BEGIN
     FOREIGN KEY ("work_order_id") REFERENCES "WorkOrder"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- 11. Verify everything was created
+SELECT 'WorkOrder' as tbl, count(*) as cnt FROM "WorkOrder"
+UNION ALL
+SELECT 'CashReconciliation', count(*) FROM "CashReconciliation"
+UNION ALL
+SELECT 'FM_occurred_at', count(*) FROM "FinancialMovement" WHERE "occurred_at" IS NOT NULL
+UNION ALL
+SELECT 'CR_type', count(*) FROM "CashRegister" WHERE "type" IS NOT NULL
+UNION ALL
+SELECT 'OB_priority', count(*) FROM "Obligation" WHERE "priority" IS NOT NULL;
