@@ -637,3 +637,113 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const { id, amount, movementType, direction, description, status, notes, movementDate } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+    }
+
+    const existing = await prisma.financialMovement.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'Movimiento no encontrado' }, { status: 404 })
+    }
+
+    const data: Record<string, unknown> = {}
+    if (amount !== undefined) data.amount = parseFloat(amount)
+    if (movementType) data.movementType = movementType
+    if (direction) data.direction = direction
+    if (description !== undefined) data.description = description || null
+    if (status) data.status = status
+    if (notes !== undefined) data.notes = notes || null
+    if (movementDate) {
+      const d = new Date(movementDate)
+      data.movementDate = d
+      data.occurredAt = d
+    }
+
+    const updated = await prisma.financialMovement.update({
+      where: { id },
+      data,
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        companyId: existing.companyId,
+        userId: body.updatedBy || 'default-user',
+        action: 'update',
+        entityType: 'financial_movement',
+        entityId: id,
+        oldValues: JSON.stringify({
+          amount: existing.amount,
+          movementType: existing.movementType,
+          direction: existing.direction,
+          description: existing.description,
+          status: existing.status,
+        }),
+        newValues: JSON.stringify(data),
+      },
+    })
+
+    return NextResponse.json(updated)
+  } catch (error) {
+    console.error('Error updating movement:', error)
+    return NextResponse.json({ error: 'Error al actualizar el movimiento' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    if (!id) {
+      return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+    }
+
+    const existing = await prisma.financialMovement.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'Movimiento no encontrado' }, { status: 404 })
+    }
+
+    if (existing.referenceType && existing.referenceId) {
+      const modelMap: Record<string, string> = {
+        sale: 'Sale', expense: 'Expense', purchase: 'Purchase',
+        income: 'Expense',
+      }
+      const model = modelMap[existing.referenceType]
+      if (model) {
+        try {
+          const prismaModel = (prisma as any)[
+            model === 'Sale' ? 'sale' : model === 'Expense' ? 'expense' : model === 'Purchase' ? 'purchase' : ''
+          ]
+          if (prismaModel) await prismaModel.delete({ where: { id: existing.referenceId } })
+        } catch {}
+      }
+    }
+
+    await prisma.financialMovement.delete({ where: { id } })
+
+    await prisma.auditLog.create({
+      data: {
+        companyId: existing.companyId,
+        userId: 'default-user',
+        action: 'delete',
+        entityType: 'financial_movement',
+        entityId: id,
+        oldValues: JSON.stringify({
+          amount: existing.amount,
+          movementType: existing.movementType,
+          description: existing.description,
+        }),
+      },
+    })
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('Error deleting movement:', error)
+    return NextResponse.json({ error: 'Error al eliminar el movimiento' }, { status: 500 })
+  }
+}

@@ -4,6 +4,7 @@
 [build.environment]
   NODE_VERSION = "22"
   NEXT_EXPERIMENTAL_COMPILE_CACHE = "1"
+  TZ = "America/Bogota"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

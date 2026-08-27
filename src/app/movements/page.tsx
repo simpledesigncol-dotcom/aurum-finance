@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Search, Plus, ArrowLeftRight, ArrowDownLeft, ArrowUpRight,
   X, ArrowLeft, ArrowRight, FileText, Wrench, CreditCard,
-  Wallet, Building2, Loader2, SlidersHorizontal,
+  Wallet, Building2, Loader2, SlidersHorizontal, Pencil, Trash2,
 } from 'lucide-react'
 import { formatCurrency, formatShortDate, formatTime, formatDateTime, formatNumber,
   movementTypeLabel, movementTypeColor, statusLabel, statusColor, cn } from '@/lib/utils'
@@ -75,6 +75,7 @@ export default function MovementsPage() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [selectedMovement, setSelectedMovement] = useState<Movement | null>(null)
+  const [editingMovement, setEditingMovement] = useState<Movement | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   const [filters, setFilters] = useState({
@@ -609,13 +610,35 @@ export default function MovementsPage() {
         <MovementDetail
           movement={selectedMovement}
           onClose={() => setSelectedMovement(null)}
+          onEdit={() => {
+            setEditingMovement(selectedMovement)
+            setSelectedMovement(null)
+          }}
+          onDelete={async () => {
+            if (confirm('¿Eliminar este movimiento? Esta acción no se puede deshacer.')) {
+              await fetch(`/api/movements?id=${selectedMovement.id}`, { method: 'DELETE' })
+              setSelectedMovement(null)
+              fetchMovements()
+            }
+          }}
+        />
+      )}
+
+      {editingMovement && (
+        <MovementEditForm
+          movement={editingMovement}
+          onClose={() => setEditingMovement(null)}
+          onSaved={() => {
+            setEditingMovement(null)
+            fetchMovements()
+          }}
         />
       )}
     </div>
   )
 }
 
-function MovementDetail({ movement, onClose }: { movement: Movement; onClose: () => void }) {
+function MovementDetail({ movement, onClose, onEdit, onDelete }: { movement: Movement; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
   const [activeTab, setActiveTab] = useState<'details' | 'notes'>('details')
 
   return (
@@ -628,6 +651,16 @@ function MovementDetail({ movement, onClose }: { movement: Movement; onClose: ()
           <div className="flex-1">
             <p className="text-base font-semibold">{movement.description || movementTypeLabel(movement.movementType)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{movementTypeLabel(movement.movementType)} · {formatDateTime(movement.movementDate)}</p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button onClick={onEdit}
+              className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-blue transition-colors" title="Editar">
+              <Pencil size={15} />
+            </button>
+            <button onClick={onDelete}
+              className="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-muted-foreground hover:text-danger transition-colors" title="Eliminar">
+              <Trash2 size={15} />
+            </button>
           </div>
           <p className={cn('text-xl font-bold tabular-nums', movement.direction === 'in' ? 'text-success' : 'text-danger')}>
             {movement.direction === 'in' ? '+' : '-'}{formatCurrency(movement.amount)}
@@ -729,5 +762,125 @@ function DetailRow({
         <p className={cn('text-sm font-medium mt-0.5', mono && 'font-mono text-[11px]')}>{value}</p>
       )}
     </div>
+  )
+}
+
+function MovementEditForm({ movement, onClose, onSaved }: {
+  movement: Movement
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [amount, setAmount] = useState(String(movement.amount))
+  const [description, setDescription] = useState(movement.description || '')
+  const [notes, setNotes] = useState(movement.notes || '')
+  const [movementDate, setMovementDate] = useState(movement.movementDate?.slice(0, 10) || new Date().toISOString().split('T')[0])
+  const [status, setStatus] = useState(movement.status)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const res = await fetch('/api/movements', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: movement.id,
+          amount,
+          description,
+          notes,
+          movementDate,
+          status,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Error al guardar')
+      }
+      onSaved()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal title="Editar movimiento" subtitle={movement.transactionId} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        {error && (
+          <p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{error}</p>
+        )}
+
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Descripci�n</label>
+          <input
+            type="text"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Monto</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              min="0"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Fecha</label>
+            <input
+              type="date"
+              value={movementDate}
+              onChange={e => setMovementDate(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Estado</label>
+          <select
+            value={status}
+            onChange={e => setStatus(e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40"
+          >
+            <option value="confirmed">Confirmado</option>
+            <option value="pending">Pendiente</option>
+            <option value="draft">Borrador</option>
+            <option value="cancelled">Anulado</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Notas</label>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 resize-none"
+          />
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={onClose}
+            className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg border border-border hover:bg-muted transition-colors">
+            Cancelar
+          </button>
+          <button type="submit" disabled={saving}
+            className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity">
+            {saving ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }
