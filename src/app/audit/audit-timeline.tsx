@@ -74,6 +74,11 @@ const ACTION_COLORS: Record<string, { dot: string; bg: string; text: string }> =
   delete: { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-600' },
 }
 
+const DIRECTION_COLORS: Record<string, { dot: string; bg: string; text: string }> = {
+  in: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600' },
+  out: { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-600' },
+}
+
 const ENTITY_FILTERS = [
   { id: 'all', label: 'Todos' },
   { id: 'financial_movement', label: 'Movimientos' },
@@ -133,10 +138,11 @@ function getEntityDescription(log: AuditLogData): string {
   if (log.entityType === 'financial_movement') {
     const data = newVals || oldVals
     if (data) {
+      const dir = data.direction === 'in' ? 'Ingreso' : data.direction === 'out' ? 'Egreso' : ''
       const type = MOVEMENT_LABELS[String(data.movementType)] || String(data.movementType || '')
       const desc = String(data.description || '')
       const amount = data.amount ? ` · ${formatCurrency(Number(data.amount))}` : ''
-      return `${type}${desc ? ': ' + desc : ''}${amount}`
+      return `${dir ? dir + ' — ' : ''}${type}${desc ? ': ' + desc : ''}${amount}`
     }
   }
 
@@ -351,7 +357,12 @@ export default function AuditTimeline({ logs, users }: { logs: AuditLogData[]; u
               <div className="relative ml-4 border-l-2 border-border/60 pl-6 space-y-1">
                 {group.items.map((log, idx) => {
                   const Icon = ENTITY_ICONS[log.entityType] || ShieldCheck
-                  const colors = ACTION_COLORS[log.action] || ACTION_COLORS.update
+                  let colors = ACTION_COLORS[log.action] || ACTION_COLORS.update
+                  if (log.entityType === 'financial_movement') {
+                    const data = parseJsonSafe(log.newValues) || parseJsonSafe(log.oldValues)
+                    const dir = data?.direction as string | undefined
+                    if (dir && DIRECTION_COLORS[dir]) colors = DIRECTION_COLORS[dir]
+                  }
                   const description = getEntityDescription(log)
                   const diffDetails = getDiffDetails(log)
                   const isExpanded = expandedId === log.id

@@ -4,18 +4,20 @@ import { useState, useRef, useEffect } from 'react'
 import { Plus, ShoppingBag, Receipt, Package, Wallet, Wrench } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import MovementForm from './movement-form'
+import WorkOrderForm from './work-order-form'
 
 const ACTIONS = [
   { label: 'Nueva venta', icon: ShoppingBag, href: '/sales', color: 'text-success' },
   { label: 'Nuevo gasto', icon: Receipt, href: '/expenses', color: 'text-danger' },
   { label: 'Nueva compra', icon: Package, href: '/purchases', color: 'text-warning' },
-  { label: 'Nueva OT', icon: Wrench, href: '/work-orders', color: 'text-blue' },
+  { label: 'Nueva OT', icon: Wrench, action: 'work_order' as const, color: 'text-blue' },
   { label: 'Movimiento', icon: Wallet, action: 'movement' as const, color: 'text-blue' },
 ]
 
 export default function FloatingActionButton() {
   const [open, setOpen] = useState(false)
   const [showMovement, setShowMovement] = useState(false)
+  const [showWorkOrder, setShowWorkOrder] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -31,6 +33,8 @@ export default function FloatingActionButton() {
     setOpen(false)
     if (action.action === 'movement') {
       setShowMovement(true)
+    } else if (action.action === 'work_order') {
+      setShowWorkOrder(true)
     } else if (action.href) {
       router.push(action.href)
     }
@@ -66,6 +70,7 @@ export default function FloatingActionButton() {
       </div>
 
       {showMovement && <MovementForm onClose={() => setShowMovement(false)} />}
+      {showWorkOrder && <WorkOrderForm onClose={() => setShowWorkOrder(false)} onCreated={() => setShowWorkOrder(false)} />}
     </>
   )
 }

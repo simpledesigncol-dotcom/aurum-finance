@@ -96,3 +96,27 @@ export async function PATCH(
     )
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+
+    await prisma.financialMovement.updateMany({
+      where: { workOrderId: id },
+      data: { workOrderId: null },
+    })
+
+    await prisma.workOrder.delete({ where: { id } })
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('Error deleting work order:', error)
+    return NextResponse.json(
+      { error: 'Error al eliminar la orden de trabajo' },
+      { status: 500 }
+    )
+  }
+}

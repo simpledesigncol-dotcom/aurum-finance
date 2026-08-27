@@ -16,6 +16,7 @@ interface FormData {
   paymentType: string
   notes: string
   status: string
+  workOrderId: string
 }
 
 interface MovementFormProps {
@@ -30,6 +31,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
   const [success, setSuccess] = useState(false)
   const [transactionId, setTransactionId] = useState('')
   const [resolvedRegisterId, setResolvedRegisterId] = useState<string | null>(registerId || null)
+  const [workOrders, setWorkOrders] = useState<{ id: string; orderNumber: string; vehiclePlate?: string | null }[]>([])
   const router = useRouter()
 
   useEffect(() => {
@@ -41,6 +43,10 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
         })
         .catch(() => {})
     }
+    fetch('/api/work-orders?limit=100')
+      .then(res => res.json())
+      .then(data => setWorkOrders(data.orders || []))
+      .catch(() => {})
   }, [registerId])
 
   const [form, setForm] = useState<FormData>({
@@ -52,6 +58,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
     paymentType: 'cash',
     notes: '',
     status: 'confirmed',
+    workOrderId: '',
   })
 
   const updateForm = (field: keyof FormData, value: string) => {
@@ -110,6 +117,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
             createdBy: 'default-user',
             companyId: 'default',
             status: form.status,
+            workOrderId: form.workOrderId || null,
           }),
         })
 
@@ -129,6 +137,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
             paymentType: 'cash',
             notes: '',
             status: 'confirmed',
+            workOrderId: '',
           })
           router.refresh()
         }, 2000)
@@ -238,6 +247,20 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                 placeholder="Ej: Lavado completo carro placa ABC123"
                 className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 placeholder:text-muted-foreground/50"
               />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Orden de trabajo (opcional)</label>
+              <select
+                value={form.workOrderId}
+                onChange={(e) => updateForm('workOrderId', e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+              >
+                <option value="">Sin OT</option>
+                {workOrders.map(wo => (
+                  <option key={wo.id} value={wo.id}>#{wo.orderNumber}{wo.vehiclePlate ? ` — ${wo.vehiclePlate}` : ''}</option>
+                ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

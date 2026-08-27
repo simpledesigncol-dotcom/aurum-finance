@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency, statusLabel, statusColor, cn } from '@/lib/utils'
 import { WORK_ORDER_STATUSES } from '@/lib/constants'
+import WorkOrderForm from '@/components/work-order-form'
 
 type WorkOrder = {
   id: string
@@ -262,6 +263,13 @@ export default function WorkOrdersPage() {
           </table>
         </div>
       </div>
+
+      {showForm && (
+        <WorkOrderForm
+          onClose={() => setShowForm(false)}
+          onCreated={() => { setShowForm(false); fetchOrders() }}
+        />
+      )}
     </div>
   )
 }
