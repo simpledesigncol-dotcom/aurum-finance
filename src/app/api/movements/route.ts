@@ -641,7 +641,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json()
-    const { id, amount, movementType, direction, description, status, notes, movementDate } = body
+    const { id, amount, movementType, direction, description, status, notes, movementDate, sourceType, sourceId } = body
 
     if (!id) {
       return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
@@ -659,6 +659,8 @@ export async function PATCH(request: Request) {
     if (description !== undefined) data.description = description || null
     if (status) data.status = status
     if (notes !== undefined) data.notes = notes || null
+    if (sourceType) data.sourceType = sourceType
+    if (sourceId !== undefined) data.sourceId = sourceId || null
     if (movementDate) {
       const d = new Date(movementDate)
       data.movementDate = d
@@ -683,6 +685,8 @@ export async function PATCH(request: Request) {
           direction: existing.direction,
           description: existing.description,
           status: existing.status,
+          sourceType: existing.sourceType,
+          sourceId: existing.sourceId,
         }),
         newValues: JSON.stringify(data),
       },
