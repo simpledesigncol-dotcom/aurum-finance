@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-export async function POST() {
+export async function GET() { return seed() }
+export async function POST() { return seed() }
+
+async function seed() {
   try {
     const company = await prisma.company.upsert({
       where: { id: 'default' },
