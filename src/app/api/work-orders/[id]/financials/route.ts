@@ -23,7 +23,7 @@ export async function GET(
     }
 
     const movements = await prisma.financialMovement.findMany({
-      where: { workOrderId: id },
+      where: { workOrderId: id, status: 'confirmed' },
       orderBy: { occurredAt: 'desc' },
       include: {
         category: true,

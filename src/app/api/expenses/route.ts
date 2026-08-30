@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { generateTransactionId } from '@/lib/transactions'
-import { getDefaultRegisterId } from '@/lib/registers'
+import { resolveSourceFromPaymentMethod } from '@/lib/payment-sources'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,68 +32,117 @@ export async function GET(request: Request) {
   }
 }
 
+async function resolveOrCreateContact(name: string | null | undefined, companyId: string): Promise<string | null> {
+  if (!name) return null
+
+  const existing = await prisma.contact.findFirst({
+    where: {
+      name: { equals: name, mode: 'insensitive' as const },
+      companyId,
+    },
+    select: { id: true },
+  })
+  if (existing) return existing.id
+
+  const contact = await prisma.contact.create({
+    data: { name, type: 'other', companyId },
+  })
+  return contact.id
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { amount, expenseDate, categoryId, description, contactId, paymentMethodId, receiptNumber, notes } = body
+    const {
+      amount,
+      expenseDate,
+      categoryId,
+      description,
+      contactId,
+      contactName,
+      paymentMethodId,
+      receiptNumber,
+      notes,
+      workOrderId,
+    } = body
 
-    if (!amount || !expenseDate) {
+    if (amount === undefined || amount === null || amount === '' || Number(amount) <= 0) {
       return NextResponse.json(
-        { error: 'Campos requeridos faltantes: amount, expenseDate' },
+        { error: 'El monto debe ser mayor a 0' },
+        { status: 400 }
+      )
+    }
+    const parsedAmount = parseFloat(amount)
+
+    if (!expenseDate) {
+      return NextResponse.json(
+        { error: 'Campos requeridos faltantes: expenseDate' },
         { status: 400 }
       )
     }
 
-    const expense = await prisma.expense.create({
-      data: {
-        companyId: 'default',
-        createdBy: 'default-user',
-        amount,
-        expenseDate: new Date(expenseDate),
-        categoryId: categoryId || null,
-        description: description || null,
-        contactId: contactId || null,
-        paymentMethodId: paymentMethodId || null,
-        receiptNumber: receiptNumber || null,
-        isRecurring: false,
-      },
-      include: {
-        category: true,
-        contact: true,
-        paymentMethod: true,
-      },
-    })
+    const companyId = body.companyId || 'default'
+    const createdBy = body.createdBy || 'default-user'
+    const resolvedContactId = contactId || (await resolveOrCreateContact(contactName, companyId))
+    const { sourceType, sourceId } = await resolveSourceFromPaymentMethod(paymentMethodId, companyId)
 
+    const parsedDate = new Date(expenseDate)
     const transactionId = await generateTransactionId()
-    const registerId = await getDefaultRegisterId()
 
-    const movement = await prisma.financialMovement.create({
-      data: {
-        transactionId,
-        companyId: 'default',
-        status: 'confirmed',
-        movementType: 'expense',
-        amount,
-        direction: 'out',
-        occurredAt: new Date(expenseDate),
-        movementDate: new Date(expenseDate),
-        description: description || `Gasto`,
-        categoryId: categoryId || null,
-        sourceType: 'cash_register',
-        sourceId: registerId,
-        contactId: contactId || null,
-        referenceType: 'expense',
-        referenceId: expense.id,
-        createdBy: 'default-user',
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const expense = await tx.expense.create({
+        data: {
+          companyId,
+          createdBy,
+          amount: parsedAmount,
+          expenseDate: parsedDate,
+          categoryId: categoryId || null,
+          description: description || null,
+          contactId: resolvedContactId,
+          paymentMethodId: paymentMethodId || null,
+          receiptNumber: receiptNumber || null,
+          workOrderId: workOrderId || null,
+          isRecurring: false,
+        },
+        include: {
+          category: true,
+          contact: true,
+          paymentMethod: true,
+        },
+      })
+
+      const movement = await tx.financialMovement.create({
+        data: {
+          transactionId,
+          companyId,
+          status: 'confirmed',
+          movementType: 'expense',
+          amount: parsedAmount,
+          direction: 'out',
+          occurredAt: parsedDate,
+          movementDate: parsedDate,
+          description: description || 'Gasto',
+          categoryId: categoryId || null,
+          sourceType,
+          sourceId,
+          contactId: resolvedContactId,
+          workOrderId: workOrderId || null,
+          referenceType: 'expense',
+          referenceId: expense.id,
+          notes: notes || null,
+          createdBy,
+        },
+      })
+
+      await tx.expense.update({
+        where: { id: expense.id },
+        data: { financialMovementId: movement.id },
+      })
+
+      return expense
     })
 
-    await prisma.expense.update({
-      where: { id: expense.id },
-      data: { financialMovementId: movement.id },
-    })
-
-    return NextResponse.json(expense, { status: 201 })
+    return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('Error creating expense:', error)
     return NextResponse.json(

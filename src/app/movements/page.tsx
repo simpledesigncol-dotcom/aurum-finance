@@ -217,8 +217,8 @@ export default function MovementsPage() {
         })
       }
 
-      setMovements(items)
-      setPagination(prev => ({ ...prev, total: data.pagination?.total || items.length, pages: data.pagination?.pages || 1 }))
+setMovements(items)
+      setPagination(prev => ({ ...prev, total: data.pagination?.total ?? items.length, pages: data.pagination?.totalPages ?? data.pagination?.pages ?? 1 }))
     } catch {
       setMovements([])
     } finally {
@@ -603,7 +603,7 @@ export default function MovementsPage() {
       </div>
 
       {showForm && (
-        <MovementForm onClose={() => setShowForm(false)} />
+        <MovementForm onClose={() => { setShowForm(false); fetchMovements() }} />
       )}
 
       {selectedMovement && (
@@ -802,6 +802,14 @@ function MovementEditForm({ movement, onClose, onSaved }: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (sourceType === 'bank_account' && !sourceId) {
+      setError('Selecciona una cuenta bancaria')
+      return
+    }
+    if (sourceType === 'cash_register' && !sourceId) {
+      setError('No hay una caja disponible para asignar')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -851,16 +859,16 @@ function MovementEditForm({ movement, onClose, onSaved }: {
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1.5">Cuenta (origen)</label>
           <div className="flex gap-2">
-            <button type="button" onClick={() => { setSourceType('cash_register'); setSourceId('') }}
+            <button type="button" onClick={() => { setSourceType('cash_register'); setSourceId(registers[0]?.id || '') }}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${sourceType === 'cash_register' ? 'border-blue/40 bg-blue/[0.06] text-blue' : 'border-border hover:bg-muted text-muted-foreground'}`}>
               <Wallet size={13} /> Caja
             </button>
-            <button type="button" onClick={() => setSourceType('bank_account')}
+            <button type="button" onClick={() => { setSourceType('bank_account'); setSourceId('') }}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${sourceType === 'bank_account' ? 'border-blue/40 bg-blue/[0.06] text-blue' : 'border-border hover:bg-muted text-muted-foreground'}`}>
               <Building2 size={13} /> Banco
             </button>
           </div>
-          {sourceType === 'cash_register' && registers.length > 1 && (
+          {sourceType === 'cash_register' && registers.length > 0 && (
             <select value={sourceId} onChange={e => setSourceId(e.target.value)}
               className="mt-2 w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40">
               {registers.map(r => (

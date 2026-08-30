@@ -25,6 +25,13 @@ type WorkOrder = {
   createdAt: string
   contact: { id: string; name: string } | null
   _count: { financialMovements: number }
+  financials?: {
+    income: number
+    costs: number
+    profit: number
+    margin: number
+    pendingReceivable: number
+  }
 }
 
 export default function WorkOrdersPage() {
@@ -73,8 +80,8 @@ export default function WorkOrdersPage() {
       if (o.status === 'open') acc.open++
       if (o.status === 'in_progress') acc.inProgress++
       if (o.status === 'completed') acc.completed++
-      acc.income += o.saleAmount
-      acc.costs += o.costAmount
+      acc.income += o.financials?.income ?? o.saleAmount ?? 0
+      acc.costs += o.financials?.costs ?? o.costAmount ?? 0
       return acc
     },
     { total: 0, open: 0, inProgress: 0, completed: 0, income: 0, costs: 0 }
@@ -213,8 +220,10 @@ export default function WorkOrdersPage() {
                 </tr>
               ) : (
                 filtered.map(order => {
-                  const profit = order.saleAmount - order.costAmount
-                  const margin = order.saleAmount > 0 ? (profit / order.saleAmount) * 100 : 0
+                  const income = order.financials?.income ?? order.saleAmount ?? 0
+                  const costs = order.financials?.costs ?? order.costAmount ?? 0
+                  const profit = income - costs
+                  const margin = income > 0 ? (profit / income) * 100 : 0
                   return (
                     <Link
                       key={order.id}
@@ -238,10 +247,10 @@ export default function WorkOrdersPage() {
                           {order.vehicleInfo || '—'}
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-semibold tabular-nums text-success">{formatCurrency(order.saleAmount)}</p>
+                          <p className="text-sm font-semibold tabular-nums text-success">{formatCurrency(income)}</p>
                         </div>
                         <div className="text-right hidden sm:block">
-                          <p className="text-sm font-medium tabular-nums text-danger">{formatCurrency(order.costAmount)}</p>
+                          <p className="text-sm font-medium tabular-nums text-danger">{formatCurrency(costs)}</p>
                         </div>
                         <div className="text-right hidden lg:block">
                           <p className={cn('text-sm font-semibold tabular-nums', profit >= 0 ? 'text-success' : 'text-danger')}>

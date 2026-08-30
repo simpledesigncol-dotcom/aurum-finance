@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { generateTransactionId } from '@/lib/transactions'
+import { resolvePaymentSource } from '@/lib/payment-sources'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,14 +36,15 @@ export async function POST(
   try {
     const { id } = await params
     const body = await request.json()
-    const { amount, paymentDate, paymentMethodId, notes } = body
+    const { amount, paymentDate, paymentMethodId, notes, sourceType, sourceId, paymentType } = body
 
-    if (!amount) {
+    if (amount === undefined || amount === null || amount === '' || Number(amount) <= 0) {
       return NextResponse.json(
-        { error: 'Campos requeridos faltantes: amount' },
+        { error: 'El monto debe ser mayor a 0' },
         { status: 400 }
       )
     }
+    const parsedAmount = parseFloat(amount)
 
     const ar = await prisma.accountsReceivable.findUnique({ where: { id } })
     if (!ar) {
@@ -52,50 +54,76 @@ export async function POST(
       )
     }
 
+    if (parsedAmount > ar.balance) {
+      return NextResponse.json(
+        { error: `El pago excede el saldo pendiente (${ar.balance})` },
+        { status: 400 }
+      )
+    }
+
+    const companyId = ar.companyId
+    const createdBy = body.createdBy || 'default-user'
+    const { sourceType: resolvedSourceType, sourceId: resolvedSourceId } = await resolvePaymentSource(
+      paymentType || 'cash',
+      companyId,
+      sourceType,
+      sourceId
+    )
+
     const transactionId = await generateTransactionId()
+    const parsedDate = paymentDate ? new Date(paymentDate) : new Date()
 
-    const movement = await prisma.financialMovement.create({
-      data: {
-        transactionId,
-        companyId: ar.companyId,
-        movementType: 'income',
-        amount,
-        direction: 'in',
-        occurredAt: paymentDate ? new Date(paymentDate) : new Date(),
-        movementDate: paymentDate ? new Date(paymentDate) : new Date(),
-        sourceType: 'accounts_receivable',
-        sourceId: id,
-        contactId: ar.contactId,
-        description: `Pago cuenta por cobrar: ${ar.description}`,
-        createdBy: 'default-user',
-      },
-    })
+    const payment = await prisma.$transaction(async (tx) => {
+      const movement = await tx.financialMovement.create({
+        data: {
+          transactionId,
+          companyId,
+          status: 'confirmed',
+          movementType: 'ar_payment',
+          amount: parsedAmount,
+          direction: 'in',
+          occurredAt: parsedDate,
+          movementDate: parsedDate,
+          sourceType: resolvedSourceType,
+          sourceId: resolvedSourceId,
+          contactId: ar.contactId,
+          workOrderId: ar.workOrderId || null,
+          description: `Pago cuenta por cobrar: ${ar.description}`,
+          referenceType: 'accounts_receivable',
+          referenceId: ar.id,
+          createdBy,
+        },
+      })
 
-    const payment = await prisma.arPayment.create({
-      data: {
-        accountsReceivableId: id,
-        amount,
-        paymentMethodId: paymentMethodId || null,
-        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-        financialMovementId: movement.id,
-        notes: notes || null,
-        createdBy: 'default-user',
-      },
-      include: {
-        paymentMethod: true,
-      },
-    })
+      const created = await tx.arPayment.create({
+        data: {
+          accountsReceivableId: id,
+          amount: parsedAmount,
+          paymentMethodId: paymentMethodId || null,
+          paymentDate: parsedDate,
+          financialMovementId: movement.id,
+          notes: notes || null,
+          createdBy,
+        },
+        include: {
+          paymentMethod: true,
+        },
+      })
 
-    const newPaidAmount = ar.paidAmount + amount
-    const newBalance = ar.originalAmount - newPaidAmount
+      const newPaidAmount = ar.paidAmount + parsedAmount
+      const newBalance = Math.max(0, ar.originalAmount - newPaidAmount)
+      const newStatus = newBalance <= 0 ? 'paid' : 'partial'
 
-    await prisma.accountsReceivable.update({
-      where: { id },
-      data: {
-        paidAmount: newPaidAmount,
-        balance: Math.max(0, newBalance),
-        status: newBalance <= 0 ? 'paid' : ar.status,
-      },
+      await tx.accountsReceivable.update({
+        where: { id },
+        data: {
+          paidAmount: newPaidAmount,
+          balance: newBalance,
+          status: newStatus,
+        },
+      })
+
+      return created
     })
 
     return NextResponse.json(payment, { status: 201 })

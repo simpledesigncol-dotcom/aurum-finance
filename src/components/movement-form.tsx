@@ -73,8 +73,10 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
 
   const getDirection = (): 'in' | 'out' => {
     if (!selectedEvent) return 'out'
-    const inEvents: EventType[] = ['sale', 'ar_payment', 'obligation_received', 'capital_contribution']
-    return inEvents.includes(selectedEvent) ? 'in' : 'out'
+    const dir = EVENT_TYPES.find(e => e.id === selectedEvent)?.direction
+    if (dir === 'out') return 'out'
+    if (dir === 'transfer') return 'out'
+    return 'in'
   }
 
   const getMovementType = (): string => {

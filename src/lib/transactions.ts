@@ -20,5 +20,6 @@ export async function generateTransactionId(): Promise<string> {
     }
   }
 
-  return `${prefix}${String(seq).padStart(9, '0')}`
+  const random = Math.floor(Math.random() * 90) + 10
+  return `${prefix}${String(seq).padStart(7, '0')}${random}`
 }

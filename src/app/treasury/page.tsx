@@ -50,7 +50,7 @@ export default function TreasuryPage() {
           fetch('/api/bank-accounts'),
           fetch('/api/movements?sourceType=cash_register&limit=9999'),
           fetch('/api/movements?limit=50'),
-          fetch('/api/register/default'),
+          fetch('/api/cash-register/default'),
         ])
 
         const banksData = await banksRes.json()
@@ -60,15 +60,21 @@ export default function TreasuryPage() {
 
         setBankAccounts(banksData)
 
-        const openingBalance = registerData.openingBalance || 0
-        const cashMovements = (cashData.movements || cashData).filter((m: Movement) => m.status === 'confirmed')
-        const cashIn = cashMovements
-          .filter((m: Movement) => m.direction === 'in')
-          .reduce((sum: number, m: Movement) => sum + m.amount, 0)
-        const cashOut = cashMovements
-          .filter((m: Movement) => m.direction === 'out')
-          .reduce((sum: number, m: Movement) => sum + m.amount, 0)
-        setCashBalance(openingBalance + cashIn - cashOut)
+        // Total cash = sum of the (correctly computed) default register balances
+        if (registerData?.general || registerData?.minor) {
+          const total = (registerData.general?.balance || 0) + (registerData.minor?.balance || 0)
+          setCashBalance(total)
+        } else {
+          const openingBalance = registerData.openingBalance || 0
+          const cashMovements = (cashData.movements || cashData).filter((m: Movement) => m.status === 'confirmed')
+          const cashIn = cashMovements
+            .filter((m: Movement) => m.direction === 'in')
+            .reduce((sum: number, m: Movement) => sum + m.amount, 0)
+          const cashOut = cashMovements
+            .filter((m: Movement) => m.direction === 'out')
+            .reduce((sum: number, m: Movement) => sum + m.amount, 0)
+          setCashBalance(openingBalance + cashIn - cashOut)
+        }
 
         setMovements(movementsData.movements || movementsData)
       } catch {

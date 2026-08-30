@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { generateTransactionId } from '@/lib/transactions'
-import { getDefaultRegisterId } from '@/lib/registers'
+import { resolvePaymentSource } from '@/lib/payment-sources'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,12 +44,13 @@ export async function POST(
       notes,
     } = body
 
-    if (!amount || amount <= 0) {
+    if (amount === undefined || amount === null || Number(amount) <= 0) {
       return NextResponse.json(
         { error: 'El monto debe ser mayor a 0' },
         { status: 400 }
       )
     }
+    const parsedAmount = parseFloat(amount)
 
     const obligation = await prisma.obligation.findUnique({ where: { id } })
     if (!obligation) {
@@ -59,92 +60,103 @@ export async function POST(
       )
     }
 
-    if (amount > obligation.balance) {
+    if (parsedAmount > obligation.balance) {
       return NextResponse.json(
-        { error: `El monto ($${amount}) excede el saldo pendiente ($${obligation.balance})` },
+        { error: `El monto ($${parsedAmount}) excede el saldo pendiente ($${obligation.balance})` },
         { status: 400 }
       )
     }
 
+    const companyId = obligation.companyId
+    const createdBy = body.createdBy || 'default-user'
+    const { sourceType: resolvedSourceType, sourceId: resolvedSourceId } = await resolvePaymentSource(
+      'cash',
+      companyId,
+      sourceType && sourceType !== 'cash_register' ? sourceType : sourceType || undefined,
+      sourceId && sourceId !== 'default' ? sourceId : undefined
+    )
+
     const transactionId = await generateTransactionId()
     const payDate = paymentDate ? new Date(paymentDate) : new Date()
-    const registerId = sourceId || (sourceType === 'cash_register' ? await getDefaultRegisterId() : sourceId)
+    const nextDueDateCalc = dueDate ? new Date(dueDate) : payDate
 
-    const movement = await prisma.financialMovement.create({
-      data: {
-        transactionId,
-        companyId: obligation.companyId,
-        movementType: 'obligation_payment',
-        amount,
-        direction: 'out',
-        occurredAt: payDate,
-        movementDate: payDate,
-        sourceType: sourceType || 'cash_register',
-        sourceId: registerId || await getDefaultRegisterId(),
-        contactId: obligation.contactId,
-        description: `Pago: ${obligation.name}`,
-        notes: notes || null,
-        createdBy: 'default-user',
-      },
-    })
+    const payment = await prisma.$transaction(async (tx) => {
+      const movement = await tx.financialMovement.create({
+        data: {
+          transactionId,
+          companyId,
+          movementType: 'obligation_payment',
+          amount: parsedAmount,
+          direction: 'out',
+          occurredAt: payDate,
+          movementDate: payDate,
+          sourceType: resolvedSourceType,
+          sourceId: resolvedSourceId,
+          contactId: obligation.contactId,
+          description: `Pago: ${obligation.name}`,
+          referenceType: 'obligation',
+          referenceId: obligation.id,
+          notes: notes || null,
+          createdBy,
+        },
+      })
 
-    const payment = await prisma.obligationPayment.create({
-      data: {
-        obligationId: id,
-        dueDate: dueDate ? new Date(dueDate) : payDate,
-        amountDue: amount,
-        amountPaid: amount,
-        paymentDate: payDate,
-        status: 'paid',
-        financialMovementId: movement.id,
-        notes: notes || null,
-      },
-    })
+      const created = await tx.obligationPayment.create({
+        data: {
+          obligationId: id,
+          dueDate: nextDueDateCalc,
+          amountDue: parsedAmount,
+          amountPaid: parsedAmount,
+          paymentDate: payDate,
+          status: 'paid',
+          financialMovementId: movement.id,
+          notes: notes || null,
+        },
+      })
 
-    const newPaidAmount = obligation.paidAmount + amount
-    const newBalance = obligation.originalAmount - newPaidAmount
-    const isFullyPaid = newBalance <= 0
+      const newPaidAmount = obligation.paidAmount + parsedAmount
+      const newBalance = obligation.originalAmount - newPaidAmount
+      const isFullyPaid = newBalance <= 0
 
-    let newStatus = obligation.status
-    if (isFullyPaid) {
-      newStatus = 'paid'
-    }
-
-    let nextDueDate = obligation.nextDueDate
-    if (obligation.isRecurring && obligation.paymentFrequency && !isFullyPaid) {
-      const current = obligation.nextDueDate || obligation.startDate
-      const next = new Date(current)
-      switch (obligation.paymentFrequency) {
-        case 'weekly':
-          next.setDate(next.getDate() + 7)
-          break
-        case 'biweekly':
-          next.setDate(next.getDate() + 14)
-          break
-        case 'monthly':
-          next.setMonth(next.getMonth() + 1)
-          break
-        case 'quarterly':
-          next.setMonth(next.getMonth() + 3)
-          break
-        case 'semiannual':
-          next.setMonth(next.getMonth() + 6)
-          break
-        case 'annual':
-          next.setFullYear(next.getFullYear() + 1)
-          break
+      const newStatus = isFullyPaid ? 'paid' : obligation.status
+      let nextDueDate = obligation.nextDueDate
+      if (obligation.isRecurring && obligation.paymentFrequency && !isFullyPaid) {
+        const current = obligation.nextDueDate || obligation.startDate
+        const next = new Date(current)
+        switch (obligation.paymentFrequency) {
+          case 'weekly':
+            next.setDate(next.getDate() + 7)
+            break
+          case 'biweekly':
+            next.setDate(next.getDate() + 14)
+            break
+          case 'monthly':
+            next.setMonth(next.getMonth() + 1)
+            break
+          case 'quarterly':
+            next.setMonth(next.getMonth() + 3)
+            break
+          case 'semiannual':
+            next.setMonth(next.getMonth() + 6)
+            break
+          case 'annual':
+            next.setFullYear(next.getFullYear() + 1)
+            break
+        }
+        nextDueDate = next
       }
-      nextDueDate = next
-    }
 
-    await prisma.obligation.update({
-      where: { id },
-      data: {
-        paidAmount: newPaidAmount,
-        balance: Math.max(0, newBalance),
-        status: newStatus,
-        nextDueDate,
-      },
+      await tx.obligation.update({
+        where: { id },
+        data: {
+          paidAmount: newPaidAmount,
+          balance: Math.max(0, newBalance),
+          status: newStatus,
+          nextDueDate,
+        },
+      })
+
+      return created
     })
 
     return NextResponse.json(payment, { status: 201 })

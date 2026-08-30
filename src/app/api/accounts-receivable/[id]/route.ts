@@ -45,19 +45,34 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
+    const existing = await prisma.accountsReceivable.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Cuenta por cobrar no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const data: Record<string, unknown> = {}
+    if (body.contactId !== undefined) data.contactId = body.contactId
+    if (body.description !== undefined) data.description = body.description
+    if (body.issueDate !== undefined) data.issueDate = new Date(body.issueDate)
+    if (body.dueDate !== undefined) data.dueDate = new Date(body.dueDate)
+    if (body.status !== undefined) data.status = body.status
+    if (body.agingBucket !== undefined) data.agingBucket = body.agingBucket
+    if (body.notes !== undefined) data.notes = body.notes
+
+    if (body.originalAmount !== undefined) {
+      const newOriginal = parseFloat(body.originalAmount)
+      const newBalance = Math.max(0, newOriginal - existing.paidAmount)
+      data.originalAmount = newOriginal
+      data.balance = newBalance
+      data.status = newBalance <= 0 ? 'paid' : newBalance < newOriginal ? 'partial' : 'pending'
+    }
+
     const ar = await prisma.accountsReceivable.update({
       where: { id },
-      data: {
-        ...(body.contactId !== undefined && { contactId: body.contactId }),
-        ...(body.description !== undefined && { description: body.description }),
-        ...(body.originalAmount !== undefined && { originalAmount: body.originalAmount }),
-        ...(body.balance !== undefined && { balance: body.balance }),
-        ...(body.issueDate !== undefined && { issueDate: new Date(body.issueDate) }),
-        ...(body.dueDate !== undefined && { dueDate: new Date(body.dueDate) }),
-        ...(body.status !== undefined && { status: body.status }),
-        ...(body.agingBucket !== undefined && { agingBucket: body.agingBucket }),
-        ...(body.notes !== undefined && { notes: body.notes }),
-      },
+      data,
       include: {
         contact: true,
         sale: true,
@@ -81,8 +96,20 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    await prisma.arPayment.deleteMany({ where: { accountsReceivableId: id } })
-    await prisma.accountsReceivable.delete({ where: { id } })
+    await prisma.$transaction(async (tx) => {
+      const payments = await tx.arPayment.findMany({
+        where: { accountsReceivableId: id },
+        select: { financialMovementId: true },
+      })
+      const movementIds = payments
+        .map((p) => p.financialMovementId)
+        .filter((v): v is string => Boolean(v))
+      if (movementIds.length) {
+        await tx.financialMovement.deleteMany({ where: { id: { in: movementIds } } })
+      }
+      await tx.arPayment.deleteMany({ where: { accountsReceivableId: id } })
+      await tx.accountsReceivable.delete({ where: { id } })
+    })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting accounts receivable:', error)

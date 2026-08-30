@@ -12,28 +12,19 @@ export async function GET() {
     const accountIds = accounts.map((a) => a.id)
 
     const movements = await prisma.financialMovement.groupBy({
-      by: ['sourceId'],
+      by: ['sourceId', 'direction'],
       where: {
         sourceType: 'bank_account',
         sourceId: { in: accountIds },
+        status: 'confirmed',
       },
       _sum: { amount: true },
     })
 
     const balanceMap = new Map<string, number>()
     for (const m of movements) {
-      const incoming = await prisma.financialMovement.aggregate({
-        where: { sourceType: 'bank_account', sourceId: m.sourceId, direction: 'in' },
-        _sum: { amount: true },
-      })
-      const outgoing = await prisma.financialMovement.aggregate({
-        where: { sourceType: 'bank_account', sourceId: m.sourceId, direction: 'out' },
-        _sum: { amount: true },
-      })
-      balanceMap.set(
-        m.sourceId,
-        (incoming._sum.amount || 0) - (outgoing._sum.amount || 0)
-      )
+      const delta = m.direction === 'in' ? (m._sum.amount || 0) : -(m._sum.amount || 0)
+      balanceMap.set(m.sourceId, (balanceMap.get(m.sourceId) || 0) + delta)
     }
 
     const result = accounts.map((account) => ({

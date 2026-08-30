@@ -21,11 +21,11 @@ export async function GET(
     }
 
     const incoming = await prisma.financialMovement.aggregate({
-      where: { sourceType: 'bank_account', sourceId: id, direction: 'in' },
+      where: { sourceType: 'bank_account', sourceId: id, direction: 'in', status: 'confirmed' },
       _sum: { amount: true },
     })
     const outgoing = await prisma.financialMovement.aggregate({
-      where: { sourceType: 'bank_account', sourceId: id, direction: 'out' },
+      where: { sourceType: 'bank_account', sourceId: id, direction: 'out', status: 'confirmed' },
       _sum: { amount: true },
     })
 

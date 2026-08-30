@@ -45,19 +45,34 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
+    const existing = await prisma.accountsPayable.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Cuenta por pagar no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const data: Record<string, unknown> = {}
+    if (body.contactId !== undefined) data.contactId = body.contactId
+    if (body.description !== undefined) data.description = body.description
+    if (body.issueDate !== undefined) data.issueDate = new Date(body.issueDate)
+    if (body.dueDate !== undefined) data.dueDate = new Date(body.dueDate)
+    if (body.status !== undefined) data.status = body.status
+    if (body.agingBucket !== undefined) data.agingBucket = body.agingBucket
+    if (body.notes !== undefined) data.notes = body.notes
+
+    if (body.originalAmount !== undefined) {
+      const newOriginal = parseFloat(body.originalAmount)
+      const newBalance = Math.max(0, newOriginal - existing.paidAmount)
+      data.originalAmount = newOriginal
+      data.balance = newBalance
+      data.status = newBalance <= 0 ? 'paid' : newBalance < newOriginal ? 'partial' : 'pending'
+    }
+
     const ap = await prisma.accountsPayable.update({
       where: { id },
-      data: {
-        ...(body.contactId !== undefined && { contactId: body.contactId }),
-        ...(body.description !== undefined && { description: body.description }),
-        ...(body.originalAmount !== undefined && { originalAmount: body.originalAmount }),
-        ...(body.balance !== undefined && { balance: body.balance }),
-        ...(body.issueDate !== undefined && { issueDate: new Date(body.issueDate) }),
-        ...(body.dueDate !== undefined && { dueDate: new Date(body.dueDate) }),
-        ...(body.status !== undefined && { status: body.status }),
-        ...(body.agingBucket !== undefined && { agingBucket: body.agingBucket }),
-        ...(body.notes !== undefined && { notes: body.notes }),
-      },
+      data,
       include: {
         contact: true,
         purchase: true,
@@ -81,8 +96,20 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    await prisma.apPayment.deleteMany({ where: { accountsPayableId: id } })
-    await prisma.accountsPayable.delete({ where: { id } })
+    await prisma.$transaction(async (tx) => {
+      const payments = await tx.apPayment.findMany({
+        where: { accountsPayableId: id },
+        select: { financialMovementId: true },
+      })
+      const movementIds = payments
+        .map((p) => p.financialMovementId)
+        .filter((v): v is string => Boolean(v))
+      if (movementIds.length) {
+        await tx.financialMovement.deleteMany({ where: { id: { in: movementIds } } })
+      }
+      await tx.apPayment.deleteMany({ where: { accountsPayableId: id } })
+      await tx.accountsPayable.delete({ where: { id } })
+    })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting accounts payable:', error)

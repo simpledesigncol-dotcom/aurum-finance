@@ -23,13 +23,46 @@ export async function GET(request: Request) {
         include: {
           contact: { select: { id: true, name: true } },
           _count: { select: { financialMovements: true } },
+          sales: { select: { id: true, total: true, balanceDue: true } },
         },
       }),
       prisma.workOrder.count({ where }),
     ])
 
+    const enriched = await Promise.all(
+      orders.map(async (order) => {
+        const saleTotal = order.sales.reduce((sum, s) => sum + s.total, 0)
+        const pendingReceivable = order.sales.reduce((sum, s) => sum + s.balanceDue, 0)
+        const movements = await prisma.financialMovement.findMany({
+          where: { workOrderId: order.id, status: 'confirmed' },
+          select: { amount: true, direction: true },
+        })
+        const movementIncome = movements
+          .filter((m) => m.direction === 'in')
+          .reduce((sum, m) => sum + m.amount, 0)
+        const movementCosts = movements
+          .filter((m) => m.direction === 'out')
+          .reduce((sum, m) => sum + m.amount, 0)
+
+        const income = order.saleAmount || saleTotal || movementIncome
+        const costs = order.costAmount || movementCosts
+        const profit = income - costs
+
+        return {
+          ...order,
+          financials: {
+            income,
+            costs,
+            profit,
+            margin: income > 0 ? (profit / income) * 100 : 0,
+            pendingReceivable,
+          },
+        }
+      })
+    )
+
     return NextResponse.json({
-      orders,
+      orders: enriched,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     })
   } catch (error) {

@@ -303,21 +303,8 @@ export async function POST(request: Request) {
 
     switch (movementType) {
       case 'income': {
-        const expense = await prisma.expense.create({
-          data: {
-            companyId,
-            amount: parsedAmount,
-            description: description || 'Ingreso',
-            expenseDate: parsedDate,
-            contactId: resolvedContactId,
-            categoryId: categoryId || null,
-            workOrderId: workOrderId || null,
-            financialMovementId: movement.id,
-            createdBy: userId,
-          },
-        })
         refType = 'income'
-        refId = expense.id
+        refId = movement.id
         break
       }
 
