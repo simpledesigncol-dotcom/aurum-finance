@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const accounts = await prisma.bankAccount.findMany({
+      where: { companyId: 'default' },
       orderBy: { createdAt: 'desc' },
     })
 

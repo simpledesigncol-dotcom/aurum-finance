@@ -11,9 +11,7 @@ export function cn(...inputs: ClassValue[]) {
 
 function toBogota(date: Date | string): Date {
   const d = typeof date === 'string' ? parseISO(date) : date
-  const utc = d.getTime() + d.getTimezoneOffset() * 60000
-  const bogota = new Date(utc - (-5 * 3600000))
-  return bogota
+  return d
 }
 
 export function formatCurrency(amount: number, currency = 'COP'): string {

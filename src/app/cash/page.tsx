@@ -50,6 +50,7 @@ export default function CashPage() {
   const [movements, setMovements] = useState<Movement[]>([])
   const [reconciliations, setReconciliations] = useState<Reconciliation[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [physicalCount, setPhysicalCount] = useState('')
   const [arqueoNotes, setArqueoNotes] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -57,21 +58,29 @@ export default function CashPage() {
 
   const fetchData = useCallback(async () => {
     try {
+      setLoadError(null)
       const [regRes, movRes, recRes] = await Promise.all([
         fetch('/api/cash-register/default'),
         fetch('/api/movements?sourceType=cash_register&limit=200'),
         fetch('/api/cash-register/reconciliations?limit=10'),
       ])
-      const regData = await regRes.json()
-      const movData = await movRes.json()
-      const recData = await recRes.json()
 
-      setGeneral(regData.general)
-      setMinor(regData.minor)
+      if (!regRes.ok) {
+        const err = await regRes.json().catch(() => ({}))
+        throw new Error(err.error || `Error ${regRes.status} al cargar cajas`)
+      }
+
+      const regData = await regRes.json()
+      const movData = movRes.ok ? await movRes.json() : { movements: [] }
+      const recData = recRes.ok ? await recRes.json() : { reconciliations: [] }
+
+      setGeneral(regData.general || null)
+      setMinor(regData.minor || null)
       setMovements(Array.isArray(movData.movements) ? movData.movements : [])
       setReconciliations(Array.isArray(recData.reconciliations) ? recData.reconciliations : [])
-    } catch {
-      console.error('Error fetching cash data')
+    } catch (e) {
+      console.error('Error fetching cash data:', e)
+      setLoadError(e instanceof Error ? e.message : 'Error al cargar datos de caja')
     } finally {
       setLoading(false)
     }
@@ -129,6 +138,17 @@ export default function CashPage() {
               <div className="h-4 w-full bg-muted rounded animate-pulse" />
             </div>
           ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-5 animate-fade-in">
+        <div className="bg-card rounded-xl border border-border p-8 text-center">
+          <p className="text-sm text-danger font-medium mb-2">{loadError}</p>
+          <button onClick={fetchData} className="text-xs text-primary hover:underline">Reintentar</button>
         </div>
       </div>
     )

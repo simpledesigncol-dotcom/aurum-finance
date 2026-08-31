@@ -60,11 +60,24 @@ export async function getTotalBankBalance(companyId: string): Promise<number> {
     select: { id: true },
   })
 
-  let total = 0
-  for (const acc of accounts) {
-    total += await getBankAccountBalance(acc.id)
-  }
-  return total
+  if (accounts.length === 0) return 0
+
+  const accountIds = accounts.map((a) => a.id)
+
+  const movements = await prisma.financialMovement.groupBy({
+    by: ['sourceId', 'direction'],
+    where: {
+      sourceType: 'bank_account',
+      sourceId: { in: accountIds },
+      status: 'confirmed',
+    },
+    _sum: { amount: true },
+  })
+
+  return movements.reduce((total, m) => {
+    const delta = m.direction === 'in' ? (m._sum.amount || 0) : -(m._sum.amount || 0)
+    return total + delta
+  }, 0)
 }
 
 export async function getSourceBalance(

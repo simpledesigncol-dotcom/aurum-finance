@@ -70,6 +70,7 @@ export default function MovementsPage() {
   const [movements, setMovements] = useState<Movement[]>([])
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 25, total: 0, pages: 0 })
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [period, setPeriod] = useState(searchParams.get('period') || 'month')
   const [quickFilter, setQuickFilter] = useState<string | null>(null)
@@ -146,10 +147,14 @@ const buildQueryParams = useCallback(() => {
 
   const fetchMovements = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const query = buildQueryParams()
       const res = await fetch(`/api/movements?${query}`)
-      if (!res.ok) throw new Error('Error fetching')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `Error ${res.status}`)
+      }
       const data = await res.json()
       setMovements(data.movements || [])
       setPagination(prev => ({
@@ -157,8 +162,9 @@ const buildQueryParams = useCallback(() => {
         total: data.pagination?.total ?? 0,
         pages: data.pagination?.totalPages ?? 1,
       }))
-    } catch {
+    } catch (e) {
       setMovements([])
+      setLoadError(e instanceof Error ? e.message : 'Error al cargar movimientos')
     } finally {
       setLoading(false)
     }
@@ -385,6 +391,18 @@ placeholder="Buscar movimientos..."
         </div>
       )}
 
+      {loadError && (
+        <div className="bg-danger/[0.06] border border-danger/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-slide-up">
+          <p className="text-sm text-danger font-medium">{loadError}</p>
+          <button
+            onClick={() => fetchMovements()}
+            className="text-xs text-primary hover:underline shrink-0"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
 <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold text-sm">Movimientos</h2>
@@ -418,7 +436,7 @@ placeholder="Buscar movimientos..."
                     <td className="px-5 py-3 hidden sm:table-cell"><div className="h-3.5 w-16 bg-muted rounded animate-pulse ml-auto" /></td>
                   </tr>
                 ))
-              ) : movements.length === 0 ? (
+              ) : movements.length === 0 && !loadError ? (
                 <tr>
                   <td colSpan={8} className="px-5 py-16 text-center">
                     <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
