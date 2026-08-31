@@ -40,14 +40,25 @@ export default function SuppliersPage() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null)
+  const [loadError, setLoadError] = useState('')
 
   const fetchSuppliers = useCallback(async () => {
     try {
       const res = await fetch('/api/contacts?type=supplier')
       const data = await res.json()
+      if (!res.ok || !Array.isArray(data)) {
+        setSuppliers([])
+        setLoadError(
+          (data && typeof data === 'object' && typeof data.error === 'string' ? data.error : '') ||
+            'No se pudieron cargar los proveedores. Revisa la conexión e intenta de nuevo.'
+        )
+        return
+      }
       setSuppliers(data)
+      setLoadError('')
     } catch {
       console.error('Error fetching suppliers')
+      setLoadError('No se pudieron cargar los proveedores. Revisa la conexión e intenta de nuevo.')
     } finally {
       setLoading(false)
     }
@@ -161,6 +172,12 @@ export default function SuppliersPage() {
           Nuevo proveedor
         </button>
       </div>
+
+      {loadError && (
+        <div className="rounded-xl border border-danger/20 bg-danger/[0.04] px-4 py-3 text-sm text-danger">
+          {loadError}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">

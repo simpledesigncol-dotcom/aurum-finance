@@ -114,15 +114,8 @@ export async function POST(
         },
       })
 
-      const newPaidAmount = obligation.paidAmount + parsedAmount
-      const newBalance = obligation.originalAmount - newPaidAmount
-      const isFullyPaid = newBalance <= 0
-
-      const newStatus = isFullyPaid ? 'paid' : obligation.status
-      let nextDueDate = obligation.nextDueDate
-      if (obligation.isRecurring && obligation.paymentFrequency && !isFullyPaid) {
-        const current = obligation.nextDueDate || obligation.startDate
-        const next = new Date(current)
+      const advanceCycle = (from: Date): Date => {
+        const next = new Date(from)
         switch (obligation.paymentFrequency) {
           case 'weekly':
             next.setDate(next.getDate() + 7)
@@ -143,14 +136,35 @@ export async function POST(
             next.setFullYear(next.getFullYear() + 1)
             break
         }
-        nextDueDate = next
+        return next
+      }
+
+      let updatePaidAmount = obligation.paidAmount + parsedAmount
+      let updateBalance = obligation.originalAmount - updatePaidAmount
+      let nextDueDate = obligation.nextDueDate
+      let newStatus = obligation.status
+
+      if (obligation.isRecurring && obligation.paymentFrequency) {
+        const remaining = obligation.balance - parsedAmount
+        if (remaining <= 0) {
+          nextDueDate = advanceCycle(obligation.nextDueDate || obligation.startDate)
+          updatePaidAmount = 0
+          updateBalance = obligation.originalAmount
+          newStatus = 'active'
+        } else {
+          updatePaidAmount = obligation.paidAmount + parsedAmount
+          updateBalance = obligation.balance - parsedAmount
+          newStatus = 'active'
+        }
+      } else if (updateBalance <= 0) {
+        newStatus = 'paid'
       }
 
       await tx.obligation.update({
         where: { id },
         data: {
-          paidAmount: newPaidAmount,
-          balance: Math.max(0, newBalance),
+          paidAmount: updatePaidAmount,
+          balance: Math.max(0, updateBalance),
           status: newStatus,
           nextDueDate,
         },

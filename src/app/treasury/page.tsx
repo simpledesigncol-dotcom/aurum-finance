@@ -58,6 +58,7 @@ export default function TreasuryPage() {
   const [savingArqueo, setSavingArqueo] = useState(false)
   const [arqueoDone, setArqueoDone] = useState(false)
   const [showTransferForm, setShowTransferForm] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     load()
@@ -80,15 +81,28 @@ export default function TreasuryPage() {
         const registerData = await registerRes.json()
         const transfersData = await transfersRes.json()
 
-        setBankAccounts(banksData)
+        const banks = Array.isArray(banksData) ? banksData : []
+        const cashList = Array.isArray(cashData?.movements)
+          ? cashData.movements
+          : Array.isArray(cashData)
+            ? cashData
+            : []
+        const movList = Array.isArray(movementsData?.movements)
+          ? movementsData.movements
+          : Array.isArray(movementsData)
+            ? movementsData
+            : []
+        const transferList = Array.isArray(transfersData?.transfers) ? transfersData.transfers : []
+
+        setBankAccounts(banks)
 
         // Total cash = sum of the (correctly computed) default register balances
         if (registerData?.general || registerData?.minor) {
           const total = (registerData.general?.balance || 0) + (registerData.minor?.balance || 0)
           setCashBalance(total)
         } else {
-          const openingBalance = registerData.openingBalance || 0
-          const cashMovements = (cashData.movements || cashData).filter((m: Movement) => m.status === 'confirmed')
+          const openingBalance = registerData?.openingBalance || 0
+          const cashMovements = cashList.filter((m: Movement) => m.status === 'confirmed')
           const cashIn = cashMovements
             .filter((m: Movement) => m.direction === 'in')
             .reduce((sum: number, m: Movement) => sum + m.amount, 0)
@@ -98,10 +112,23 @@ export default function TreasuryPage() {
           setCashBalance(openingBalance + cashIn - cashOut)
         }
 
-        setMovements(movementsData.movements || movementsData)
-        setTransfers(transfersData.transfers || [])
+        setMovements(movList)
+        setTransfers(transferList)
+
+        const failed: string[] = []
+        if (!banksRes.ok) failed.push('cuentas bancarias')
+        if (!cashRes.ok) failed.push('caja')
+        if (!movementsRes.ok) failed.push('movimientos')
+        if (!registerRes.ok) failed.push('cajas registradoras')
+        if (!transfersRes.ok) failed.push('transferencias')
+        setLoadError(
+          failed.length > 0
+            ? `No se pudieron cargar: ${failed.join(', ')}. Revisa la conexión e intenta de nuevo.`
+            : ''
+        )
       } catch {
         console.error('Error loading treasury data')
+        setLoadError('No se pudieron cargar los datos de tesorería. Revisa la conexión e intenta de nuevo.')
       } finally {
         setLoading(false)
       }
@@ -218,6 +245,12 @@ export default function TreasuryPage() {
         </div>
 
       </div>
+
+      {loadError && (
+        <div className="rounded-xl border border-danger/20 bg-danger/[0.04] px-4 py-3 text-sm text-danger">
+          {loadError}
+        </div>
+      )}
 
       <div className="bg-blue text-white rounded-xl p-5">
         <p className="text-xs font-medium uppercase tracking-wide opacity-80">Saldo consolidado</p>
