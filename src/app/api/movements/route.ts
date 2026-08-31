@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { generateTransactionId } from '@/lib/transactions'
-import { getDefaultRegisterId } from '@/lib/registers'
+import { resolvePaymentSource } from '@/lib/payment-sources'
 import { getDateRange } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -175,44 +175,6 @@ async function resolveOrCreateContact(
   return contact.id
 }
 
-async function resolvePaymentSource(
-  paymentType: string | null,
-  companyId: string
-): Promise<{ sourceType: string; sourceId: string }> {
-  const routing: Record<string, { sourceType: string; bankName?: string }> = {
-    cash: { sourceType: 'cash_register' },
-    nequi: { sourceType: 'bank_account', bankName: 'Nequi' },
-    daviplata: { sourceType: 'bank_account', bankName: 'Daviplata' },
-    tc: { sourceType: 'bank_account', bankName: 'Bancolombia' },
-    td: { sourceType: 'bank_account', bankName: 'Bancolombia' },
-    datafono: { sourceType: 'bank_account', bankName: 'Bancolombia' },
-    transfer: { sourceType: 'bank_account', bankName: 'Bancolombia' },
-    pse: { sourceType: 'bank_account', bankName: 'Bancolombia' },
-    cheque: { sourceType: 'bank_account', bankName: 'Bancolombia' },
-    qr: { sourceType: 'bank_account', bankName: 'Bancolombia' },
-    credit: { sourceType: 'cash_register' },
-    partial: { sourceType: 'cash_register' },
-  }
-
-  const route = paymentType ? routing[paymentType] : null
-  if (!route) return { sourceType: 'cash_register', sourceId: await getDefaultRegisterId() }
-
-  if (route.sourceType === 'cash_register') {
-    return { sourceType: 'cash_register', sourceId: await getDefaultRegisterId() }
-  }
-
-  const account = await prisma.bankAccount.findFirst({
-    where: { bankName: route.bankName, companyId },
-    select: { id: true },
-  })
-  if (account) return { sourceType: 'bank_account', sourceId: account.id }
-
-  const newAccount = await prisma.bankAccount.create({
-    data: { companyId, bankName: route.bankName!, accountType: 'savings' },
-  })
-  return { sourceType: 'bank_account', sourceId: newAccount.id }
-}
-
 function movementTypeToContactType(movementType: string): string {
   const map: Record<string, string> = {
     sale: 'client',
@@ -260,6 +222,13 @@ export async function POST(request: Request) {
       )
     }
 
+    if (movementType === 'transfer') {
+      return NextResponse.json(
+        { error: 'Las transferencias se crean de forma atómica con POST /api/transfers' },
+        { status: 400 }
+      )
+    }
+
     const companyId = body.companyId || 'default'
     const userId = createdBy || 'default-user'
     const parsedAmount = parseFloat(amount)
@@ -276,8 +245,9 @@ export async function POST(request: Request) {
 
     const transactionId = await generateTransactionId()
 
-    const movement = await prisma.financialMovement.create({
-      data: {
+    const result = await prisma.$transaction(async (tx) => {
+      const movement = await tx.financialMovement.create({
+        data: {
         transactionId,
         companyId,
         status: status || 'confirmed',
@@ -294,6 +264,7 @@ export async function POST(request: Request) {
         workOrderId: workOrderId || null,
         receiptNumber: receiptNumber || null,
         notes: notes || null,
+        metadata: paymentType ? JSON.stringify({ paymentType }) : null,
         createdBy: userId,
       },
     })
@@ -309,7 +280,7 @@ export async function POST(request: Request) {
       }
 
       case 'expense': {
-        const expense = await prisma.expense.create({
+        const expense = await tx.expense.create({
           data: {
             companyId,
             amount: parsedAmount,
@@ -327,56 +298,11 @@ export async function POST(request: Request) {
         break
       }
 
-      case 'transfer': {
-        const destSourceType = body.destSourceType || 'cash_register'
-        const destSourceId = body.destSourceId || await getDefaultRegisterId()
-
-        const originMovement = movement
-
-        const destTransactionId = await generateTransactionId()
-        const destMovement = await prisma.financialMovement.create({
-          data: {
-            transactionId: destTransactionId,
-            companyId,
-            status: status || 'confirmed',
-            movementType: 'transfer',
-            amount: parsedAmount,
-            direction: 'in',
-            occurredAt: parsedOccurrence,
-            movementDate: parsedDate,
-            description: description || 'Transferencia recibida',
-            sourceType: destSourceType,
-            sourceId: destSourceId,
-            contactId: resolvedContactId,
-            workOrderId: workOrderId || null,
-            notes: notes || null,
-            createdBy: userId,
-          },
-        })
-
-        await prisma.transfer.create({
-          data: {
-            companyId,
-            fromType: resolvedSourceType,
-            fromId: resolvedSourceId,
-            toType: destSourceType,
-            toId: destSourceId,
-            amount: parsedAmount,
-            description: description || null,
-            transferDate: parsedDate,
-            financialMovementOriginId: originMovement.id,
-            financialMovementDestId: destMovement.id,
-            createdBy: userId,
-          },
-        })
-
-        refType = 'transfer'
-        refId = destMovement.id
+      case 'transfer':
         break
-      }
 
       case 'sale': {
-        const sale = await prisma.sale.create({
+        const sale = await tx.sale.create({
           data: {
             companyId,
             contactId: resolvedContactId,
@@ -392,7 +318,7 @@ export async function POST(request: Request) {
           },
         })
 
-        await prisma.salePayment.create({
+        await tx.salePayment.create({
           data: {
             saleId: sale.id,
             amount: parsedAmount,
@@ -408,7 +334,7 @@ export async function POST(request: Request) {
       }
 
       case 'purchase': {
-        const purchase = await prisma.purchase.create({
+        const purchase = await tx.purchase.create({
           data: {
             companyId,
             contactId: resolvedContactId,
@@ -424,7 +350,7 @@ export async function POST(request: Request) {
           },
         })
 
-        await prisma.purchasePayment.create({
+        await tx.purchasePayment.create({
           data: {
             purchaseId: purchase.id,
             amount: parsedAmount,
@@ -442,9 +368,9 @@ export async function POST(request: Request) {
       case 'ar_payment': {
         const arId = body.arId || body.referenceId
         if (arId) {
-          const ar = await prisma.accountsReceivable.findUnique({ where: { id: arId } })
+          const ar = await tx.accountsReceivable.findUnique({ where: { id: arId } })
           if (ar) {
-            const payment = await prisma.arPayment.create({
+            const payment = await tx.arPayment.create({
               data: {
                 accountsReceivableId: arId,
                 amount: parsedAmount,
@@ -457,7 +383,7 @@ export async function POST(request: Request) {
             const newPaidAmount = ar.paidAmount + parsedAmount
             const newBalance = ar.originalAmount - newPaidAmount
 
-            await prisma.accountsReceivable.update({
+            await tx.accountsReceivable.update({
               where: { id: arId },
               data: {
                 paidAmount: newPaidAmount,
@@ -476,9 +402,9 @@ export async function POST(request: Request) {
       case 'ap_payment': {
         const apId = body.apId || body.referenceId
         if (apId) {
-          const ap = await prisma.accountsPayable.findUnique({ where: { id: apId } })
+          const ap = await tx.accountsPayable.findUnique({ where: { id: apId } })
           if (ap) {
-            const payment = await prisma.apPayment.create({
+            const payment = await tx.apPayment.create({
               data: {
                 accountsPayableId: apId,
                 amount: parsedAmount,
@@ -491,7 +417,7 @@ export async function POST(request: Request) {
             const newPaidAmount = ap.paidAmount + parsedAmount
             const newBalance = ap.originalAmount - newPaidAmount
 
-            await prisma.accountsPayable.update({
+            await tx.accountsPayable.update({
               where: { id: apId },
               data: {
                 paidAmount: newPaidAmount,
@@ -510,7 +436,7 @@ export async function POST(request: Request) {
       case 'obligation_payment': {
         const obligationId = body.obligationId || body.referenceId
         if (obligationId) {
-          const payment = await prisma.obligationPayment.create({
+          const payment = await tx.obligationPayment.create({
             data: {
               obligationId,
               dueDate: parsedDate,
@@ -523,12 +449,12 @@ export async function POST(request: Request) {
             },
           })
 
-          const obligation = await prisma.obligation.findUnique({ where: { id: obligationId } })
+          const obligation = await tx.obligation.findUnique({ where: { id: obligationId } })
           if (obligation) {
             const newPaidAmount = obligation.paidAmount + parsedAmount
             const newBalance = obligation.originalAmount - newPaidAmount
 
-            await prisma.obligation.update({
+            await tx.obligation.update({
               where: { id: obligationId },
               data: {
                 paidAmount: newPaidAmount,
@@ -545,7 +471,7 @@ export async function POST(request: Request) {
       }
 
       case 'obligation_received': {
-        const obligation = await prisma.obligation.create({
+        const obligation = await tx.obligation.create({
           data: {
             companyId,
             type: 'partner_loan',
@@ -562,7 +488,7 @@ export async function POST(request: Request) {
         const dueDate = new Date(parsedDate)
         dueDate.setMonth(dueDate.getMonth() + 1)
 
-        await prisma.accountsPayable.create({
+        await tx.accountsPayable.create({
           data: {
             companyId,
             contactId: resolvedContactId,
@@ -585,7 +511,7 @@ export async function POST(request: Request) {
     }
 
     if (refType || refId) {
-      await prisma.financialMovement.update({
+      await tx.financialMovement.update({
         where: { id: movement.id },
         data: {
           referenceType: refType || null,
@@ -594,7 +520,7 @@ export async function POST(request: Request) {
       })
     }
 
-    await prisma.auditLog.create({
+    await tx.auditLog.create({
       data: {
         companyId,
         userId,
@@ -612,10 +538,10 @@ export async function POST(request: Request) {
       },
     })
 
-    return NextResponse.json(
-      { ...movement, referenceType: refType, referenceId: refId },
-      { status: 201 }
-    )
+    return { ...movement, referenceType: refType, referenceId: refId }
+    })
+
+    return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('Error creating movement:', error)
     return NextResponse.json(
@@ -637,6 +563,13 @@ export async function PATCH(request: Request) {
     const existing = await prisma.financialMovement.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json({ error: 'Movimiento no encontrado' }, { status: 404 })
+    }
+
+    if (existing.movementType === 'transfer') {
+      return NextResponse.json(
+        { error: 'Edita la transferencia completa con PATCH /api/transfers para mantener consistencia' },
+        { status: 400 }
+      )
     }
 
     const data: Record<string, unknown> = {}
@@ -697,6 +630,40 @@ export async function DELETE(request: Request) {
     const existing = await prisma.financialMovement.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json({ error: 'Movimiento no encontrado' }, { status: 404 })
+    }
+
+    if (existing.movementType === 'transfer') {
+      const transfer = existing.referenceId
+        ? await prisma.transfer.findUnique({ where: { id: existing.referenceId } })
+        : null
+
+      if (transfer) {
+        await prisma.$transaction(async (tx) => {
+          if (transfer.financialMovementOriginId) {
+            await tx.financialMovement.delete({ where: { id: transfer.financialMovementOriginId } })
+          }
+          if (transfer.financialMovementDestId) {
+            await tx.financialMovement.delete({ where: { id: transfer.financialMovementDestId } })
+          }
+          await tx.transfer.delete({ where: { id: transfer.id } })
+          await tx.auditLog.create({
+            data: {
+              companyId: existing.companyId,
+              userId: 'default-user',
+              action: 'delete',
+              entityType: 'transfer',
+              entityId: transfer.id,
+              oldValues: JSON.stringify({
+                amount: transfer.amount,
+                fromType: transfer.fromType,
+                toType: transfer.toType,
+                transferDate: transfer.transferDate.toISOString(),
+              }),
+            },
+          })
+        })
+        return NextResponse.json({ ok: true, deletedTransfer: transfer.id })
+      }
     }
 
     if (existing.referenceType && existing.referenceId) {

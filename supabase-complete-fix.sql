@@ -1,6 +1,6 @@
 -- ============================================================
 -- COMPLETE FIX — Run ALL of this in Supabase SQL Editor
--- https://supabase.com/dashboard/project/rvcfaaibvqxaqdxzrkxj/sql/new
+-- https://supabase.com/dashboard/project/<TU-PROYECTO>/sql/new
 -- ============================================================
 
 -- 1. Obligation: add 4 missing columns

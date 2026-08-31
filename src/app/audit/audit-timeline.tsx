@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale'
 import {
   DollarSign, ShoppingBag, Receipt, Package, CreditCard, Scale,
   Building2, User, FileText, Settings, ArrowRight, ChevronDown,
-  ArrowDownLeft, ArrowUpRight, ShieldCheck, ArrowLeftRight, Handshake,
+  ArrowDownLeft, ArrowUpRight, ShieldCheck, ArrowLeftRight,
   Wallet, Clock, Globe,
 } from 'lucide-react'
 import type { AuditLogData } from './page'
@@ -26,7 +26,6 @@ const ENTITY_ICONS: Record<string, React.ElementType> = {
   document: FileText,
   work_order: Settings,
   transfer: ArrowLeftRight,
-  agreement: Handshake,
   cash_register: Wallet,
 }
 
@@ -44,7 +43,6 @@ const ENTITY_LABELS: Record<string, string> = {
   document: 'Documento',
   work_order: 'Orden de trabajo',
   transfer: 'Transferencia',
-  agreement: 'Convenio',
   cash_register: 'Caja',
 }
 

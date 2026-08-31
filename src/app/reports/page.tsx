@@ -6,7 +6,7 @@ import {
   Receipt, FileSpreadsheet, FileText, BarChart3, Users, Building2,
   CreditCard, Wallet, ChevronDown, ChevronUp, Loader2,
 } from 'lucide-react'
-import { formatCurrency, formatDate, formatNumber } from '@/lib/utils'
+import { formatCurrency, formatDate, formatNumber, getAgingBucket } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import * as XLSX from 'xlsx'
 
@@ -22,6 +22,7 @@ interface Movement {
   category: { id: string; name: string } | null
   contact: { id: string; name: string } | null
   workOrder: { id: string; orderNumber: string } | null
+  metadata: string | null
 }
 
 interface WorkOrder {
@@ -34,6 +35,52 @@ interface WorkOrder {
   costAmount: number
   status: string
   createdAt: string
+}
+
+const isIncoming = (m: Movement) => m.direction === 'in' && m.movementType !== 'transfer'
+const isOutgoing = (m: Movement) => m.direction === 'out' && m.movementType !== 'transfer'
+
+const PAYMENT_TYPE_LABELS: Record<string, string> = {
+  cash: 'Efectivo', transfer: 'Transferencia', td: 'Tarjeta débito', tc: 'Tarjeta crédito',
+  datafono: 'Datáfono', nequi: 'Nequi', daviplata: 'Daviplata', pse: 'PSE',
+  cheque: 'Cheque', credit: 'Crédito', partial: 'Pago parcial', qr: 'QR',
+}
+
+function movementPaymentType(m: Movement): string | null {
+  if (!m.metadata) return null
+  try {
+    const parsed = JSON.parse(m.metadata)
+    const pt = parsed.paymentType
+    return pt ? PAYMENT_TYPE_LABELS[pt] || pt : null
+  } catch {
+    return null
+  }
+}
+
+interface AgingAccount {
+  id: string
+  description: string | null
+  originalAmount: number
+  paidAmount: number
+  balance: number
+  dueDate: string
+  status: string
+  contact?: { name: string } | null
+}
+
+interface BankAccount {
+  id: string
+  bankName: string
+  accountType: string | null
+  accountNumber: string | null
+  balance: number
+}
+
+interface RegisterBalance {
+  id: string
+  name: string
+  type: string
+  balance: number
 }
 
 const periods = [
@@ -94,6 +141,10 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
 export default function ReportsPage() {
   const [movements, setMovements] = useState<Movement[]>([])
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
+  const [receivables, setReceivables] = useState<AgingAccount[]>([])
+  const [payables, setPayables] = useState<AgingAccount[]>([])
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [cashRegisters, setCashRegisters] = useState<{ general?: RegisterBalance; minor?: RegisterBalance } | null>(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('month')
   const [exportOpen, setExportOpen] = useState(false)
@@ -117,14 +168,26 @@ export default function ReportsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [movRes, woRes] = await Promise.all([
+      const [movRes, woRes, arRes, apRes, banksRes, regsRes] = await Promise.all([
         fetch('/api/movements?limit=9999'),
         fetch('/api/work-orders?limit=9999'),
+        fetch('/api/accounts-receivable'),
+        fetch('/api/accounts-payable'),
+        fetch('/api/bank-accounts'),
+        fetch('/api/cash-register/default'),
       ])
       const movData = await movRes.json()
       const woData = await woRes.json()
+      const arData = await arRes.json()
+      const apData = await apRes.json()
+      const banksData = await banksRes.json()
+      const regsData = await regsRes.json()
       setMovements(Array.isArray(movData.movements) ? movData.movements : [])
       setWorkOrders(Array.isArray(woData.orders) ? woData.orders : [])
+      setReceivables(Array.isArray(arData) ? arData : [])
+      setPayables(Array.isArray(apData) ? apData : [])
+      setBankAccounts(Array.isArray(banksData) ? banksData : [])
+      setCashRegisters(regsData && regsData.general ? regsData : null)
     } catch {
       console.error('Error fetching report data')
     } finally {
@@ -164,11 +227,11 @@ export default function ReportsPage() {
     }
   )
 
-  const totalIncome = periodMovements.filter((m) => m.direction === 'in').reduce((s, m) => s + m.amount, 0)
-  const totalExpenses = periodMovements.filter((m) => m.direction === 'out').reduce((s, m) => s + m.amount, 0)
+  const totalIncome = periodMovements.filter(isIncoming).reduce((s, m) => s + m.amount, 0)
+  const totalExpenses = periodMovements.filter(isOutgoing).reduce((s, m) => s + m.amount, 0)
   const netFlow = totalIncome - totalExpenses
-  const prevIncome = prevPeriodMovements.filter((m) => m.direction === 'in').reduce((s, m) => s + m.amount, 0)
-  const prevExpenses = prevPeriodMovements.filter((m) => m.direction === 'out').reduce((s, m) => s + m.amount, 0)
+  const prevIncome = prevPeriodMovements.filter(isIncoming).reduce((s, m) => s + m.amount, 0)
+  const prevExpenses = prevPeriodMovements.filter(isOutgoing).reduce((s, m) => s + m.amount, 0)
   const prevNet = prevIncome - prevExpenses
   const incomeChange = prevIncome > 0 ? ((totalIncome - prevIncome) / prevIncome) * 100 : 0
   const expenseChange = prevExpenses > 0 ? ((totalExpenses - prevExpenses) / prevExpenses) * 100 : 0
@@ -184,8 +247,8 @@ export default function ReportsPage() {
       })
       barData.push({
         label: monthNames[i],
-        income: mm.filter((mt) => mt.direction === 'in').reduce((s, mt) => s + mt.amount, 0),
-        expenses: mm.filter((mt) => mt.direction === 'out').reduce((s, mt) => s + mt.amount, 0),
+        income: mm.filter(isIncoming).reduce((s, mt) => s + mt.amount, 0),
+        expenses: mm.filter(isOutgoing).reduce((s, mt) => s + mt.amount, 0),
       })
     }
   } else if (period === 'quarter') {
@@ -199,8 +262,8 @@ export default function ReportsPage() {
       })
       barData.push({
         label: monthNames[q * 3 + i],
-        income: mm.filter((mt) => mt.direction === 'in').reduce((s, mt) => s + mt.amount, 0),
-        expenses: mm.filter((mt) => mt.direction === 'out').reduce((s, mt) => s + mt.amount, 0),
+        income: mm.filter(isIncoming).reduce((s, mt) => s + mt.amount, 0),
+        expenses: mm.filter(isOutgoing).reduce((s, mt) => s + mt.amount, 0),
       })
     }
   } else {
@@ -217,8 +280,8 @@ export default function ReportsPage() {
       })
       barData.push({
         label: `S${weekNum}`,
-        income: wm.filter((m) => m.direction === 'in').reduce((s, m) => s + m.amount, 0),
-        expenses: wm.filter((m) => m.direction === 'out').reduce((s, m) => s + m.amount, 0),
+        income: wm.filter(isIncoming).reduce((s, m) => s + m.amount, 0),
+        expenses: wm.filter(isOutgoing).reduce((s, m) => s + m.amount, 0),
       })
       weekStart = new Date(wEnd)
       weekNum++
@@ -226,7 +289,7 @@ export default function ReportsPage() {
   }
 
   const expenseCategories = new Map<string, { total: number; count: number }>()
-  periodMovements.filter((m) => m.direction === 'out').forEach((m) => {
+  periodMovements.filter(isOutgoing).forEach((m) => {
     const key = m.category?.name || 'Sin categoría'
     const existing = expenseCategories.get(key) || { total: 0, count: 0 }
     existing.total += m.amount
@@ -239,7 +302,7 @@ export default function ReportsPage() {
   const totalCatExpenses = sortedExpenseCategories.reduce((s, c) => s + c.total, 0)
 
   const incomeCategories = new Map<string, { total: number; count: number }>()
-  periodMovements.filter((m) => m.direction === 'in').forEach((m) => {
+  periodMovements.filter(isIncoming).forEach((m) => {
     const key = m.category?.name || 'Sin categoría'
     const existing = incomeCategories.get(key) || { total: 0, count: 0 }
     existing.total += m.amount
@@ -251,14 +314,14 @@ export default function ReportsPage() {
     .sort((a, b) => b.total - a.total)
 
   const contactIncome = new Map<string, number>()
-  periodMovements.filter((m) => m.direction === 'in' && m.contact).forEach((m) => {
+  periodMovements.filter((m) => isIncoming(m) && m.contact).forEach((m) => {
     const name = m.contact!.name
     contactIncome.set(name, (contactIncome.get(name) || 0) + m.amount)
   })
   const topClients = Array.from(contactIncome.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5)
 
   const supplierExpenses = new Map<string, { total: number; count: number }>()
-  periodMovements.filter((m) => m.direction === 'out' && m.contact).forEach((m) => {
+  periodMovements.filter((m) => isOutgoing(m) && m.contact).forEach((m) => {
     const name = m.contact!.name
     const existing = supplierExpenses.get(name) || { total: 0, count: 0 }
     existing.total += m.amount
@@ -269,8 +332,8 @@ export default function ReportsPage() {
 
   const woProfitability = workOrders.map((wo) => {
     const woMovements = movements.filter((m) => m.workOrder?.id === wo.id)
-    const income = woMovements.filter((m) => m.direction === 'in').reduce((s, m) => s + m.amount, 0)
-    const cost = woMovements.filter((m) => m.direction === 'out').reduce((s, m) => s + m.amount, 0)
+    const income = woMovements.filter(isIncoming).reduce((s, m) => s + m.amount, 0)
+    const cost = woMovements.filter(isOutgoing).reduce((s, m) => s + m.amount, 0)
     const profit = income - cost
     const margin = income > 0 ? (profit / income) * 100 : 0
     return { ...wo, income, cost, profit, margin }
@@ -283,7 +346,7 @@ export default function ReportsPage() {
 
   const paymentBreakdown = new Map<string, { total: number; count: number }>()
   periodMovements.forEach((m) => {
-    const key = m.paymentType || 'Sin definir'
+    const key = movementPaymentType(m) || 'Sin definir'
     const existing = paymentBreakdown.get(key) || { total: 0, count: 0 }
     existing.total += m.amount
     existing.count++
@@ -302,8 +365,8 @@ export default function ReportsPage() {
       })
       prevMonthData.push({
         label: monthNames[mDate.getMonth()],
-        income: mm.filter((mt) => mt.direction === 'in').reduce((s, mt) => s + mt.amount, 0),
-        expenses: mm.filter((mt) => mt.direction === 'out').reduce((s, mt) => s + mt.amount, 0),
+        income: mm.filter(isIncoming).reduce((s, mt) => s + mt.amount, 0),
+        expenses: mm.filter(isOutgoing).reduce((s, mt) => s + mt.amount, 0),
       })
     }
   } else {
@@ -316,8 +379,8 @@ export default function ReportsPage() {
       })
       prevMonthData.push({
         label: `${monthNames[mDate.getMonth()]} ${mDate.getFullYear().toString().slice(2)}`,
-        income: mm.filter((mt) => mt.direction === 'in').reduce((s, mt) => s + mt.amount, 0),
-        expenses: mm.filter((mt) => mt.direction === 'out').reduce((s, mt) => s + mt.amount, 0),
+        income: mm.filter(isIncoming).reduce((s, mt) => s + mt.amount, 0),
+        expenses: mm.filter(isOutgoing).reduce((s, mt) => s + mt.amount, 0),
       })
     }
   }
@@ -399,7 +462,7 @@ export default function ReportsPage() {
         m.contact?.name || '',
         m.direction === 'in' ? 'Ingreso' : 'Egreso',
         m.direction === 'in' ? m.amount : -m.amount,
-        paymentLabel(m.paymentType || ''),
+        movementPaymentType(m) || 'Sin definir',
       ]),
     ])
     movSheet['!cols'] = [
@@ -524,7 +587,7 @@ export default function ReportsPage() {
           </div>
           <p className="text-xl font-bold tabular-nums tracking-tight text-emerald-600">{formatCurrency(totalIncome)}</p>
           <p className="text-[11px] text-muted-foreground mt-1">
-            {periodMovements.filter((m) => m.direction === 'in').length} transacciones
+            {periodMovements.filter(isIncoming).length} transacciones
             {incomeChange !== 0 && (
               <span className={`ml-1 font-medium ${incomeChange > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {incomeChange > 0 ? '↑' : '↓'}{Math.abs(incomeChange).toFixed(1)}%
@@ -541,7 +604,7 @@ export default function ReportsPage() {
           </div>
           <p className="text-xl font-bold tabular-nums tracking-tight text-red-600">{formatCurrency(totalExpenses)}</p>
           <p className="text-[11px] text-muted-foreground mt-1">
-            {periodMovements.filter((m) => m.direction === 'out').length} transacciones
+            {periodMovements.filter(isOutgoing).length} transacciones
             {expenseChange !== 0 && (
               <span className={`ml-1 font-medium ${expenseChange > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                 {expenseChange > 0 ? '↑' : '↓'}{Math.abs(expenseChange).toFixed(1)}%
@@ -572,15 +635,15 @@ export default function ReportsPage() {
           </div>
           <p className="text-xl font-bold tabular-nums tracking-tight">
             {formatCurrency(
-              periodMovements.filter((m) => m.direction === 'out').length > 0
-                ? totalExpenses / periodMovements.filter((m) => m.direction === 'out').length
+              periodMovements.filter(isOutgoing).length > 0
+                ? totalExpenses / periodMovements.filter(isOutgoing).length
                 : 0
             )}
           </p>
           <p className="text-[11px] text-muted-foreground mt-1">
             Ingreso: {formatCurrency(
-              periodMovements.filter((m) => m.direction === 'in').length > 0
-                ? totalIncome / periodMovements.filter((m) => m.direction === 'in').length
+              periodMovements.filter(isIncoming).length > 0
+                ? totalIncome / periodMovements.filter(isIncoming).length
                 : 0
             )}
           </p>
@@ -786,16 +849,16 @@ export default function ReportsPage() {
         </SectionCard>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <SectionCard title="Cuentas por cobrar" subtitle="Resumen de aging de CxC">
-            <AgingSummary type="receivable" movements={movements} periodMovements={periodMovements} />
+          <SectionCard title="Cuentas por cobrar" subtitle="Envejecimiento según fecha de vencimiento">
+            <AgingSummary type="receivable" accounts={receivables} />
           </SectionCard>
-          <SectionCard title="Cuentas por pagar" subtitle="Resumen de aging de CxP">
-            <AgingSummary type="payable" movements={movements} periodMovements={periodMovements} />
+          <SectionCard title="Cuentas por pagar" subtitle="Envejecimiento según fecha de vencimiento">
+            <AgingSummary type="payable" accounts={payables} />
           </SectionCard>
         </div>
 
-        <SectionCard title="Dinero por cuenta" subtitle="Saldos en cajas y cuentas bancarias">
-          <MoneyByAccount periodMovements={periodMovements} />
+        <SectionCard title="Dinero por cuenta" subtitle="Saldos reales en cajas y cuentas bancarias">
+          <MoneyByAccount bankAccounts={bankAccounts} cashRegisters={cashRegisters} />
         </SectionCard>
 
         <SectionCard title="Medios de pago" subtitle="Distribución por forma de cobro/pago">
@@ -906,109 +969,122 @@ export default function ReportsPage() {
 
 function AgingSummary({
   type,
-  movements,
-  periodMovements,
+  accounts,
 }: {
   type: 'receivable' | 'payable'
-  movements: Movement[]
-  periodMovements: Movement[]
+  accounts: AgingAccount[]
 }) {
-  const relevantMovements = type === 'receivable'
-    ? periodMovements.filter((m) => ['sale', 'ar_payment', 'income'].includes(m.movementType) && m.direction === 'in')
-    : periodMovements.filter((m) => ['purchase', 'ap_payment', 'expense'].includes(m.movementType) && m.direction === 'out')
+  const totalOriginal = accounts.reduce((s, a) => s + (a.originalAmount || 0), 0)
+  const totalPaid = accounts.reduce((s, a) => s + (a.paidAmount || 0), 0)
+  const totalBalance = accounts.reduce((s, a) => s + (a.balance || 0), 0)
 
-  const total = relevantMovements.reduce((s, m) => s + m.amount, 0)
-  const paid = type === 'receivable'
-    ? movements.filter((m) => m.movementType === 'ar_payment' && m.direction === 'in')
-        .reduce((s, m) => s + m.amount, 0)
-    : movements.filter((m) => m.movementType === 'ap_payment' && m.direction === 'out')
-        .reduce((s, m) => s + m.amount, 0)
-
-  const balance = Math.max(0, total - paid)
-
-  const buckets = [
-    { label: 'Corriente', amount: balance * 0.6, color: 'bg-emerald-500' },
-    { label: '1-30 días', amount: balance * 0.2, color: 'bg-amber-500' },
-    { label: '31-60 días', amount: balance * 0.12, color: 'bg-orange-500' },
-    { label: '61-90 días', amount: balance * 0.05, color: 'bg-red-400' },
-    { label: '+90 días', amount: balance * 0.03, color: 'bg-red-600' },
+  const bucketDefs = [
+    { key: 'current', label: 'Por vencer', color: 'bg-emerald-500' },
+    { key: '1_30', label: 'Vencido 1-30', color: 'bg-amber-500' },
+    { key: '31_60', label: 'Vencido 31-60', color: 'bg-orange-500' },
+    { key: '61_90', label: 'Vencido 61-90', color: 'bg-red-400' },
+    { key: '90_plus', label: 'Vencido +90', color: 'bg-red-600' },
   ]
+
+  const bucketMap = new Map<string, number>()
+  accounts.forEach((a) => {
+    const key = getAgingBucket(a.dueDate)
+    bucketMap.set(key, (bucketMap.get(key) || 0) + (a.balance || 0))
+  })
+
+  const buckets = bucketDefs.map((b) => ({ ...b, amount: bucketMap.get(b.key) || 0 }))
+  const overdue = buckets.filter((b) => b.key !== 'current').reduce((s, b) => s + b.amount, 0)
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-          <span className="text-[10px] text-muted-foreground uppercase block">Total</span>
-          <p className="text-sm font-bold tabular-nums">{formatCurrency(total)}</p>
+          <span className="text-[10px] text-muted-foreground uppercase block">Total emitido</span>
+          <p className="text-sm font-bold tabular-nums">{formatCurrency(totalOriginal)}</p>
         </div>
         <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-          <span className="text-[10px] text-muted-foreground uppercase block">Pagado</span>
-          <p className="text-sm font-bold tabular-nums text-emerald-600">{formatCurrency(paid)}</p>
+          <span className="text-[10px] text-muted-foreground uppercase block">{type === 'receivable' ? 'Cobrado' : 'Pagado'}</span>
+          <p className="text-sm font-bold tabular-nums text-emerald-600">{formatCurrency(totalPaid)}</p>
         </div>
         <div className="rounded-lg bg-muted/50 p-2.5 text-center">
           <span className="text-[10px] text-muted-foreground uppercase block">Pendiente</span>
-          <p className="text-sm font-bold tabular-nums text-amber-600">{formatCurrency(balance)}</p>
+          <p className="text-sm font-bold tabular-nums text-amber-600">{formatCurrency(totalBalance)}</p>
         </div>
       </div>
       <div className="space-y-2">
         {buckets.map((b, i) => (
           <div key={i} className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: b.color.includes('emerald') ? '#10b981' : b.color.includes('amber') ? '#f59e0b' : b.color.includes('orange') ? '#f97316' : b.color.includes('red') && b.color.includes('600') ? '#dc2626' : '#f87171' }} />
-            <span className="text-[11px] text-muted-foreground w-20 shrink-0">{b.label}</span>
+            <span className="text-[11px] text-muted-foreground w-24 shrink-0">{b.label}</span>
             <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all" style={{ width: `${balance > 0 ? (b.amount / balance) * 100 : 0}%`, backgroundColor: b.color.includes('emerald') ? '#10b981' : b.color.includes('amber') ? '#f59e0b' : b.color.includes('orange') ? '#f97316' : b.color.includes('red') && b.color.includes('600') ? '#dc2626' : '#f87171' }} />
+              <div className="h-full rounded-full transition-all" style={{ width: `${totalBalance > 0 ? (b.amount / totalBalance) * 100 : 0}%`, backgroundColor: b.color.includes('emerald') ? '#10b981' : b.color.includes('amber') ? '#f59e0b' : b.color.includes('orange') ? '#f97316' : b.color.includes('red') && b.color.includes('600') ? '#dc2626' : '#f87171' }} />
             </div>
             <span className="text-[11px] font-medium tabular-nums w-20 text-right">{formatCurrency(b.amount)}</span>
           </div>
         ))}
+        <div className="flex items-center gap-2 pt-1">
+          <span className="w-2 h-2 rounded-full shrink-0 bg-red-500" />
+          <span className="text-[11px] font-medium text-muted-foreground w-24 shrink-0">Total vencido</span>
+          <div className="flex-1" />
+          <span className="text-[11px] font-bold tabular-nums w-20 text-right text-red-600">{formatCurrency(overdue)}</span>
+        </div>
       </div>
     </div>
   )
 }
 
-function MoneyByAccount({ periodMovements }: { periodMovements: Movement[] }) {
-  const accounts = new Map<string, { label: string; income: number; expenses: number }>()
+function MoneyByAccount({
+  bankAccounts,
+  cashRegisters,
+}: {
+  bankAccounts: BankAccount[]
+  cashRegisters: { general?: RegisterBalance; minor?: RegisterBalance } | null
+}) {
+  const rows: { label: string; sub: string; balance: number }[] = []
 
-  periodMovements.forEach((m) => {
-    const key = m.sourceType === 'cash_register' ? 'Caja' : m.sourceType === 'bank_account' ? 'Banco' : m.sourceType
-    const existing = accounts.get(key) || { label: key, income: 0, expenses: 0 }
-    if (m.direction === 'in') existing.income += m.amount
-    else existing.expenses += m.amount
-    accounts.set(key, existing)
+  const general = cashRegisters?.general
+  const minor = cashRegisters?.minor
+  if (general || minor) {
+    rows.push({
+      label: 'Caja',
+      sub: 'Efectivo (General + Menor)',
+      balance: (general?.balance || 0) + (minor?.balance || 0),
+    })
+  }
+  bankAccounts.forEach((a) => {
+    rows.push({
+      label: a.bankName,
+      sub: a.accountNumber ? `Cuenta ${a.accountNumber}` : 'Cuenta bancaria',
+      balance: a.balance || 0,
+    })
   })
 
-  const accountData = Array.from(accounts.values())
-  const totalAll = accountData.reduce((s, a) => s + a.income - a.expenses, 0)
+  const total = rows.reduce((s, r) => s + r.balance, 0)
 
-  if (accountData.length === 0) {
+  if (rows.length === 0) {
     return <p className="text-xs text-muted-foreground text-center py-8">Sin datos de cuentas</p>
   }
 
   return (
     <div className="space-y-3">
-      {accountData.map((a, i) => {
-        const net = a.income - a.expenses
-        return (
-          <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-            <div className="w-8 h-8 rounded-lg bg-blue/[0.08] flex items-center justify-center shrink-0">
-              <Wallet size={14} className="text-blue" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium">{a.label === 'Caja' ? 'Cajas (General + Menor)' : a.label === 'Banco' ? 'Cuentas bancarias' : a.label}</p>
-              <p className="text-[10px] text-muted-foreground">
-                Ingresos: {formatCurrency(a.income)} · Gastos: {formatCurrency(a.expenses)}
-              </p>
-            </div>
-            <span className={`text-sm font-bold tabular-nums shrink-0 ${net >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {formatCurrency(net)}
-            </span>
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+          <div className="w-8 h-8 rounded-lg bg-blue/[0.08] flex items-center justify-center shrink-0">
+            <Wallet size={14} className="text-blue" />
           </div>
-        )
-      })}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium">{r.label}</p>
+            <p className="text-[10px] text-muted-foreground">{r.sub}</p>
+          </div>
+          <span className={`text-sm font-bold tabular-nums shrink-0 ${r.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+            {formatCurrency(r.balance)}
+          </span>
+        </div>
+      ))}
       <div className="pt-2 border-t border-border flex items-center justify-between">
-        <span className="text-xs font-semibold">Neto total</span>
-        <span className={`text-sm font-bold tabular-nums ${totalAll >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-          {formatCurrency(totalAll)}
+        <span className="text-xs font-semibold">Total disponible</span>
+        <span className={`text-sm font-bold tabular-nums ${total >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          {formatCurrency(total)}
         </span>
       </div>
     </div>

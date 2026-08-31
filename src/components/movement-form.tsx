@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, ArrowDownLeft, ArrowUpRight, Loader2, Check } from 'lucide-react'
+import { X, ArrowDownLeft, ArrowUpRight, ArrowRightLeft, Loader2, Check } from 'lucide-react'
 import { EVENT_TYPES, PAYMENT_TYPES } from '@/lib/constants'
 
 type EventType = (typeof EVENT_TYPES)[number]['id']
@@ -19,6 +19,11 @@ interface FormData {
   workOrderId: string
 }
 
+interface AccountOption {
+  value: string
+  label: string
+}
+
 interface MovementFormProps {
   onClose?: () => void
   registerId?: string
@@ -32,17 +37,35 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
   const [transactionId, setTransactionId] = useState('')
   const [resolvedRegisterId, setResolvedRegisterId] = useState<string | null>(registerId || null)
   const [workOrders, setWorkOrders] = useState<{ id: string; orderNumber: string; vehiclePlate?: string | null }[]>([])
+  const [registerOption, setRegisterOption] = useState<AccountOption | null>(null)
+  const [bankOptions, setBankOptions] = useState<AccountOption[]>([])
+  const [fromAccount, setFromAccount] = useState('')
+  const [toAccount, setToAccount] = useState('')
   const router = useRouter()
 
   useEffect(() => {
-    if (!registerId) {
-      fetch('/api/register/default')
-        .then(res => res.json())
-        .then(data => {
-          if (data.registerId) setResolvedRegisterId(data.registerId)
-        })
-        .catch(() => {})
-    }
+    fetch('/api/register/default')
+      .then(res => res.json())
+      .then(data => {
+        if (data.registerId) {
+          if (!registerId) setResolvedRegisterId(data.registerId)
+          setRegisterOption({ value: `cash_register:${data.registerId}`, label: `Caja — ${data.name || 'Principal'}` })
+        }
+      })
+      .catch(() => {})
+    fetch('/api/bank-accounts')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setBankOptions(
+            data.map((a: { id: string; bankName: string; accountNumber?: string | null }) => ({
+              value: `bank_account:${a.id}`,
+              label: a.bankName + (a.accountNumber ? ` — ${a.accountNumber}` : ''),
+            }))
+          )
+        }
+      })
+      .catch(() => {})
     fetch('/api/work-orders?limit=100')
       .then(res => res.json())
       .then(data => setWorkOrders(data.orders || []))
@@ -71,6 +94,8 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
     setStep('form')
   }
 
+  const isTransfer = selectedEvent === 'transfer'
+
   const getDirection = (): 'in' | 'out' => {
     if (!selectedEvent) return 'out'
     const dir = EVENT_TYPES.find(e => e.id === selectedEvent)?.direction
@@ -95,12 +120,69 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
     onClose?.()
   }
 
+  const canSubmit = (): boolean => {
+    if (!form.amount || parseFloat(form.amount) <= 0) return false
+    if (isTransfer) {
+      return (
+        !!fromAccount &&
+        !!toAccount &&
+        fromAccount !== toAccount &&
+        fromAccount.split(':')[0] !== '' &&
+        toAccount.split(':')[0] !== ''
+      )
+    }
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.amount || parseFloat(form.amount) <= 0) return
+    if (!canSubmit()) return
 
     startTransition(async () => {
       try {
+        if (isTransfer) {
+          const from = fromAccount.split(':')
+          const to = toAccount.split(':')
+          const res = await fetch('/api/transfers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromType: from[0],
+              fromId: from[1],
+              toType: to[0],
+              toId: to[1],
+              amount: parseFloat(form.amount),
+              transferDate: form.movementDate,
+              description: form.description || null,
+              notes: form.notes || null,
+              status: form.status,
+              createdBy: 'default-user',
+              companyId: 'default',
+            }),
+          })
+          if (!res.ok) throw new Error('Failed')
+
+          const data = await res.json()
+          setTransactionId(data.originMovement?.transactionId || '')
+          setSuccess(true)
+          setTimeout(() => {
+            handleClose()
+            setForm({
+              eventType: null,
+              amount: '',
+              description: '',
+              movementDate: new Date().toISOString().split('T')[0],
+              contactName: '',
+              paymentType: 'cash',
+              notes: '',
+              status: 'confirmed',
+              workOrderId: '',
+            })
+            router.refresh()
+          }, 2000)
+          return
+        }
+
         const res = await fetch('/api/movements', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -148,6 +230,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
   }
 
   const selectedEventData = EVENT_TYPES.find(e => e.id === selectedEvent)
+  const allOptions = [registerOption, ...bankOptions].filter((o): o is AccountOption => o !== null)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -159,7 +242,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
             <div className="w-14 h-14 rounded-full bg-success/[0.08] flex items-center justify-center mb-4">
               <Check size={24} className="text-success" strokeWidth={2} />
             </div>
-            <p className="text-base font-semibold">Movimiento registrado</p>
+            <p className="text-base font-semibold">{isTransfer ? 'Transferencia registrada' : 'Movimiento registrado'}</p>
             <p className="text-xs font-mono text-muted-foreground mt-2 bg-muted px-3 py-1.5 rounded-lg">
               {transactionId}
             </p>
@@ -210,8 +293,8 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                   <span className="text-lg">{selectedEventData.icon}</span>
                   <div>
                     <h2 className="text-sm font-semibold">{selectedEventData.label}</h2>
-                    <p className={`text-xs font-medium ${getDirection() === 'in' ? 'text-success' : 'text-danger'}`}>
-                      {getDirection() === 'in' ? 'Dinero entra' : 'Dinero sale'}
+                    <p className={`text-xs font-medium ${isTransfer ? 'text-muted-foreground' : getDirection() === 'in' ? 'text-success' : 'text-danger'}`}>
+                      {isTransfer ? 'Dinero se mueve entre cuentas' : getDirection() === 'in' ? 'Dinero entra' : 'Dinero sale'}
                     </p>
                   </div>
                 </div>
@@ -244,24 +327,26 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                 type="text"
                 value={form.description}
                 onChange={(e) => updateForm('description', e.target.value)}
-                placeholder="Ej: Lavado completo carro placa ABC123"
+                placeholder={isTransfer ? 'Ej: Traslado a cuenta bancaria' : 'Ej: Lavado completo carro placa ABC123'}
                 className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 placeholder:text-muted-foreground/50"
               />
             </div>
 
-            <div>
-              <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Orden de trabajo (opcional)</label>
-              <select
-                value={form.workOrderId}
-                onChange={(e) => updateForm('workOrderId', e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
-              >
-                <option value="">Sin OT</option>
-                {workOrders.map(wo => (
-                  <option key={wo.id} value={wo.id}>#{wo.orderNumber}{wo.vehiclePlate ? ` — ${wo.vehiclePlate}` : ''}</option>
-                ))}
-              </select>
-            </div>
+            {!isTransfer && (
+              <div>
+                <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Orden de trabajo (opcional)</label>
+                <select
+                  value={form.workOrderId}
+                  onChange={(e) => updateForm('workOrderId', e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                >
+                  <option value="">Sin OT</option>
+                  {workOrders.map(wo => (
+                    <option key={wo.id} value={wo.id}>#{wo.orderNumber}{wo.vehiclePlate ? ` — ${wo.vehiclePlate}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -273,19 +358,52 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                   className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                 />
               </div>
-              <div>
-                <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Forma de pago</label>
-                <select
-                  value={form.paymentType}
-                  onChange={(e) => updateForm('paymentType', e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
-                >
-                  {PAYMENT_TYPES.map(pt => (
-                    <option key={pt.id} value={pt.id}>{pt.icon} {pt.label}</option>
-                  ))}
-                </select>
-              </div>
+              {!isTransfer && (
+                <div>
+                  <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Forma de pago</label>
+                  <select
+                    value={form.paymentType}
+                    onChange={(e) => updateForm('paymentType', e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                  >
+                    {PAYMENT_TYPES.map(pt => (
+                      <option key={pt.id} value={pt.id}>{pt.icon} {pt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
+
+            {isTransfer && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Desde</label>
+                  <select
+                    value={fromAccount}
+                    onChange={(e) => setFromAccount(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                  >
+                    <option value="">Origen...</option>
+                    {allOptions.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Hacia</label>
+                  <select
+                    value={toAccount}
+                    onChange={(e) => setToAccount(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                  >
+                    <option value="">Destino...</option>
+                    {allOptions.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Estado</label>
@@ -311,16 +429,18 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Contacto</label>
-              <input
-                type="text"
-                value={form.contactName}
-                onChange={(e) => updateForm('contactName', e.target.value)}
-                placeholder="Nombre del contacto"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 placeholder:text-muted-foreground/50"
-              />
-            </div>
+            {!isTransfer && (
+              <div>
+                <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Contacto</label>
+                <input
+                  type="text"
+                  value={form.contactName}
+                  onChange={(e) => updateForm('contactName', e.target.value)}
+                  placeholder="Nombre del contacto"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 placeholder:text-muted-foreground/50"
+                />
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Notas</label>
@@ -335,18 +455,24 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
 
             <button
               type="submit"
-              disabled={isPending || !form.amount || parseFloat(form.amount) <= 0}
+              disabled={isPending || !canSubmit()}
               className="w-full py-2.5 rounded-xl bg-blue text-white font-medium text-sm hover:bg-blue/90 transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
             >
               {isPending ? (
                 <>
                   <Loader2 size={14} className="animate-spin" />
-                  Registrando...
+                  {isTransfer ? 'Registrando transferencia...' : 'Registrando...'}
                 </>
               ) : (
                 <>
-                  {getDirection() === 'in' ? <ArrowDownLeft size={14} strokeWidth={1.8} /> : <ArrowUpRight size={14} strokeWidth={1.8} />}
-                  Registrar {getDirection() === 'in' ? 'ingreso' : 'egreso'}
+                  {isTransfer ? (
+                    <ArrowRightLeft size={14} strokeWidth={1.8} />
+                  ) : getDirection() === 'in' ? (
+                    <ArrowDownLeft size={14} strokeWidth={1.8} />
+                  ) : (
+                    <ArrowUpRight size={14} strokeWidth={1.8} />
+                  )}
+                  {isTransfer ? 'Registrar transferencia' : getDirection() === 'in' ? 'Registrar ingreso' : 'Registrar egreso'}
                 </>
               )}
             </button>

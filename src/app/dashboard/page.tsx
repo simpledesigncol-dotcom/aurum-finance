@@ -159,11 +159,11 @@ async function getDashboardData() {
     }),
     prisma.financialMovement.findMany({
       where: { status: 'confirmed', movementDate: { gte: subDays(now, 60) } },
-      select: { amount: true, direction: true, movementDate: true },
+      select: { amount: true, direction: true, movementType: true, movementDate: true },
     }),
     prisma.financialMovement.findMany({
       where: { status: 'confirmed', movementDate: { gte: sevenDaysAgo } },
-      select: { amount: true, direction: true, movementDate: true },
+      select: { amount: true, direction: true, movementType: true, movementDate: true },
     }),
   ])
 
@@ -177,15 +177,15 @@ async function getDashboardData() {
   const prevMovements = last30DaysMovements.filter(
     m => m.movementDate >= prevThirtyStart && m.movementDate < prevThirtyEnd
   )
-  const prevIncome = prevMovements.filter(m => m.direction === 'in').reduce((s, m) => s + Number(m.amount), 0)
-  const prevExpenses = prevMovements.filter(m => m.direction === 'out').reduce((s, m) => s + Number(m.amount), 0)
+  const prevIncome = prevMovements.filter(m => m.direction === 'in' && m.movementType !== 'transfer').reduce((s, m) => s + Number(m.amount), 0)
+  const prevExpenses = prevMovements.filter(m => m.direction === 'out' && m.movementType !== 'transfer').reduce((s, m) => s + Number(m.amount), 0)
   const prevNet = prevIncome - prevExpenses
 
   const currentIncome = last30DaysMovements.filter(
-    m => m.movementDate >= sevenDaysAgo && m.direction === 'in'
+    m => m.movementDate >= sevenDaysAgo && m.direction === 'in' && m.movementType !== 'transfer'
   ).reduce((s, m) => s + Number(m.amount), 0)
   const currentExpenses = last30DaysMovements.filter(
-    m => m.movementDate >= sevenDaysAgo && m.direction === 'out'
+    m => m.movementDate >= sevenDaysAgo && m.direction === 'out' && m.movementType !== 'transfer'
   ).reduce((s, m) => s + Number(m.amount), 0)
   const currentNet = currentIncome - currentExpenses
 
@@ -199,8 +199,8 @@ async function getDashboardData() {
     const dayMoves = flowData.filter(m => m.movementDate >= dayDate && m.movementDate < nextDay)
     flow7Days.push({
       label: dayNames[dayDate.getDay()],
-      income: dayMoves.filter(m => m.direction === 'in').reduce((s, m) => s + Number(m.amount), 0),
-      expenses: dayMoves.filter(m => m.direction === 'out').reduce((s, m) => s + Number(m.amount), 0),
+      income: dayMoves.filter(m => m.direction === 'in' && m.movementType !== 'transfer').reduce((s, m) => s + Number(m.amount), 0),
+      expenses: dayMoves.filter(m => m.direction === 'out' && m.movementType !== 'transfer').reduce((s, m) => s + Number(m.amount), 0),
     })
   }
 

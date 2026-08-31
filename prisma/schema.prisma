@@ -39,7 +39,6 @@ model Company {
   importLogs         ImportLog[]
   auditLogs          AuditLog[]
   notifications      Notification[]
-  agreements         Agreement[]
   workOrders         WorkOrder[]
 }
 
@@ -71,9 +70,6 @@ model User {
   importLogs           ImportLog[]
   auditLogs            AuditLog[]
   notifications        Notification[]
-  agreements           Agreement[]
-  agreementItems       AgreementItem[]
-  agreementSettlements AgreementSettlement[]
   workOrders           WorkOrder[]
   cashReconciliations  CashReconciliation[]
 }
@@ -139,7 +135,6 @@ model Contact {
   accountsReceivable AccountsReceivable[]
   accountsPayable    AccountsPayable[]
   obligations        Obligation[]
-  agreements         Agreement[]
   workOrders         WorkOrder[]
 }
 
@@ -679,80 +674,4 @@ model Notification {
 
   user    User    @relation(fields: [userId], references: [id])
   company Company @relation(fields: [companyId], references: [id])
-}
-
-model Agreement {
-  id                    String   @id @default(uuid())
-  companyId             String   @map("company_id")
-  contactId             String   @map("contact_id")
-  title                 String
-  description           String?
-  contractorName        String   @map("contractor_name")
-  contractorIdNumber    String?  @map("contractor_id_number")
-  serviceTypes          String   @default("[\"pintura\",\"latoneria\"]")
-  paintSplitAurum       Float    @default(40) @map("paint_split_aurum")
-  paintSplitContractor  Float    @default(60) @map("paint_split_contractor")
-  bodyworkSplitAurum    Float    @default(25) @map("bodywork_split_aurum")
-  status                String   @default("active")
-  startDate             DateTime @map("start_date")
-  endDate               DateTime? @map("end_date")
-  terminationNoticeDays Int?     @map("termination_notice_days")
-  workSchedule          String?  @map("work_schedule")
-  paymentTerms          String?  @map("payment_terms")
-  notes                 String?
-  createdBy             String   @map("created_by")
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
-
-  company    Company              @relation(fields: [companyId], references: [id])
-  contact    Contact              @relation(fields: [contactId], references: [id])
-  creator    User                 @relation(fields: [createdBy], references: [id])
-  items      AgreementItem[]
-  settlements AgreementSettlement[]
-}
-
-model AgreementItem {
-  id                  String   @id @default(uuid())
-  agreementId         String   @map("agreement_id")
-  vehiclePlate        String   @map("vehicle_plate")
-  vehicleInfo         String?  @map("vehicle_info")
-  serviceType         String
-  serviceDescription  String?  @map("service_description")
-  totalValue          Float    @map("total_value")
-  splitAurum          Float    @map("split_aurum")
-  splitContractor     Float    @map("split_contractor")
-  status              String   @default("pending")
-  thirdPartyNeeded    Boolean  @default(false) @map("third_party_needed")
-  thirdPartyCost      Float?   @map("third_party_cost")
-  clientPaid          Boolean  @default(false) @map("client_paid")
-  vehicleDelivered    Boolean  @default(false) @map("vehicle_delivered")
-  invoicedDate        DateTime? @map("invoiced_date")
-  paidDate            DateTime? @map("paid_date")
-  notes               String?
-  createdBy           String   @map("created_by")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-
-  agreement  Agreement              @relation(fields: [agreementId], references: [id])
-  creator    User                   @relation(fields: [createdBy], references: [id])
-  settlements AgreementSettlement[]
-}
-
-model AgreementSettlement {
-  id                  String   @id @default(uuid())
-  agreementId         String   @map("agreement_id")
-  agreementItemId     String?  @map("agreement_item_id")
-  settlementDate      DateTime @map("settlement_date")
-  amount              Float
-  direction           String
-  paymentMethod       String?  @map("payment_method")
-  reference           String?
-  notes               String?
-  financialMovementId String?  @map("financial_movement_id")
-  createdBy           String   @map("created_by")
-  createdAt           DateTime @default(now()) @map("created_at")
-
-  agreement         Agreement          @relation(fields: [agreementId], references: [id])
-  agreementItem     AgreementItem?     @relation(fields: [agreementItemId], references: [id])
-  creator           User               @relation(fields: [createdBy], references: [id])
 }

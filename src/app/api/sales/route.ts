@@ -144,6 +144,7 @@ export async function POST(request: Request) {
             workOrderId: workOrderId || null,
             referenceType: 'sale',
             referenceId: created.id,
+            metadata: JSON.stringify({ paymentType }),
             createdBy,
           },
         })

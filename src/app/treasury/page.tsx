@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingUp, ArrowDownLeft, ArrowUpRight, Wallet, Building2, Activity, ClipboardCheck, X, Check, AlertTriangle, Loader2 } from 'lucide-react'
+import { TrendingUp, ArrowDownLeft, ArrowUpRight, ArrowRightLeft, Wallet, Building2, Activity, ClipboardCheck, X, Check, AlertTriangle, Loader2 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Modal from '@/components/ui/modal'
+import MovementForm from '@/components/movement-form'
 
 interface BankAccount {
   id: string
@@ -33,30 +34,51 @@ interface ArqueoRow {
   physical: string
 }
 
+interface Transfer {
+  id: string
+  amount: number
+  description: string | null
+  transferDate: string
+  fromType: string
+  fromId: string
+  toType: string
+  toId: string
+  originMovement?: { transactionId: string; status: string } | null
+  destMovement?: { transactionId: string; status: string } | null
+}
+
 export default function TreasuryPage() {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [cashBalance, setCashBalance] = useState(0)
   const [movements, setMovements] = useState<Movement[]>([])
+  const [transfers, setTransfers] = useState<Transfer[]>([])
   const [loading, setLoading] = useState(true)
   const [arqueoOpen, setArqueoOpen] = useState(false)
   const [arqueoRows, setArqueoRows] = useState<ArqueoRow[]>([])
   const [savingArqueo, setSavingArqueo] = useState(false)
   const [arqueoDone, setArqueoDone] = useState(false)
+  const [showTransferForm, setShowTransferForm] = useState(false)
 
   useEffect(() => {
-    async function load() {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function load() {
       try {
-        const [banksRes, cashRes, movementsRes, registerRes] = await Promise.all([
+        const [banksRes, cashRes, movementsRes, registerRes, transfersRes] = await Promise.all([
           fetch('/api/bank-accounts'),
           fetch('/api/movements?sourceType=cash_register&limit=9999'),
           fetch('/api/movements?limit=50'),
           fetch('/api/cash-register/default'),
+          fetch('/api/transfers?limit=10'),
         ])
 
         const banksData = await banksRes.json()
         const cashData = await cashRes.json()
         const movementsData = await movementsRes.json()
         const registerData = await registerRes.json()
+        const transfersData = await transfersRes.json()
 
         setBankAccounts(banksData)
 
@@ -77,14 +99,13 @@ export default function TreasuryPage() {
         }
 
         setMovements(movementsData.movements || movementsData)
+        setTransfers(transfersData.transfers || [])
       } catch {
         console.error('Error loading treasury data')
       } finally {
         setLoading(false)
       }
-    }
-    load()
-  }, [])
+  }
 
   const bankTotal = bankAccounts.reduce((sum, a) => sum + a.balance, 0)
   const consolidatedBalance = cashBalance + bankTotal
@@ -96,10 +117,10 @@ export default function TreasuryPage() {
     return d >= monthStart && m.status === 'confirmed'
   })
   const monthIncome = monthMovements
-    .filter((m) => m.direction === 'in')
+    .filter((m) => m.direction === 'in' && m.movementType !== 'transfer')
     .reduce((sum, m) => sum + m.amount, 0)
   const monthExpenses = monthMovements
-    .filter((m) => m.direction === 'out')
+    .filter((m) => m.direction === 'out' && m.movementType !== 'transfer')
     .reduce((sum, m) => sum + m.amount, 0)
 
   const movementTypeLabel = (t: string) => {
@@ -184,10 +205,16 @@ export default function TreasuryPage() {
             <h1 className="text-2xl font-semibold tracking-tight">Tesoreria</h1>
             <p className="text-muted-foreground text-sm mt-0.5">Vision consolidada del flujo de caja</p>
           </div>
-          <button onClick={openArqueo} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors">
-            <ClipboardCheck size={14} strokeWidth={1.8} />
-            Realizar arqueo
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowTransferForm(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-colors">
+              <ArrowRightLeft size={14} strokeWidth={1.8} />
+              Mover entre cuentas
+            </button>
+            <button onClick={openArqueo} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors">
+              <ClipboardCheck size={14} strokeWidth={1.8} />
+              Realizar arqueo
+            </button>
+          </div>
         </div>
 
       </div>
@@ -257,6 +284,39 @@ export default function TreasuryPage() {
                 <p className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(a.balance)}</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {transfers.length > 0 && (
+        <div className="bg-card rounded-xl border border-border">
+          <div className="px-5 py-3.5 border-b border-border">
+            <h2 className="font-semibold text-sm">Transferencias recientes</h2>
+          </div>
+          <div className="divide-y divide-border">
+            {transfers.map((t) => {
+              const fromLabel = t.fromType === 'cash_register' ? 'Caja' : 'Banco'
+              const toLabel = t.toType === 'cash_register' ? 'Caja' : 'Banco'
+              const status = t.originMovement?.status || t.destMovement?.status || 'confirmed'
+              return (
+                <div key={t.id} className="px-5 py-3 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue/[0.08] text-blue flex items-center justify-center shrink-0">
+                    <ArrowRightLeft size={14} strokeWidth={1.8} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{t.description || 'Transferencia entre cuentas'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {fromLabel} → {toLabel} · <span className="capitalize">{status}</span> ·{' '}
+                      <span className="font-mono text-[11px] text-muted-foreground/70">{t.originMovement?.transactionId}</span>
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold tabular-nums">{formatCurrency(t.amount)}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(t.transferDate)}</p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -396,6 +456,10 @@ export default function TreasuryPage() {
             )}
           </div>
         </Modal>
+      )}
+
+      {showTransferForm && (
+        <MovementForm onClose={() => { setShowTransferForm(false); load() }} />
       )}
     </div>
   )
