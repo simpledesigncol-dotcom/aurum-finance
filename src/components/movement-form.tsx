@@ -41,6 +41,8 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
   const [bankOptions, setBankOptions] = useState<AccountOption[]>([])
   const [fromAccount, setFromAccount] = useState('')
   const [toAccount, setToAccount] = useState('')
+  const [account, setAccount] = useState('')
+  const [accountError, setAccountError] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
         if (data.registerId) {
           if (!registerId) setResolvedRegisterId(data.registerId)
           setRegisterOption({ value: `cash_register:${data.registerId}`, label: `Caja — ${data.name || 'Principal'}` })
+          if (!account) setAccount(`cash_register:${data.registerId}`)
         }
       })
       .catch(() => {})
@@ -117,6 +120,8 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
     setSelectedEvent(null)
     setSuccess(false)
     setTransactionId('')
+    setAccount('')
+    setAccountError(false)
     onClose?.()
   }
 
@@ -131,12 +136,15 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
         toAccount.split(':')[0] !== ''
       )
     }
-    return true
+    return !!account
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!canSubmit()) return
+    if (!canSubmit()) {
+      if (!isTransfer && !account) setAccountError(true)
+      return
+    }
 
     startTransition(async () => {
       try {
@@ -200,6 +208,8 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
             companyId: 'default',
             status: form.status,
             workOrderId: form.workOrderId || null,
+            sourceType: account.split(':')[0],
+            sourceId: account.split(':')[1],
           }),
         })
 
@@ -373,6 +383,29 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                 </div>
               )}
             </div>
+
+            {!isTransfer && (
+              <div>
+                <label className="text-xs font-medium mb-1.5 block text-muted-foreground">
+                  Cuenta <span className="text-danger">*</span>
+                </label>
+                <select
+                  value={account}
+                  onChange={(e) => { setAccount(e.target.value); setAccountError(false) }}
+                  className={`w-full px-3 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 ${
+                    accountError ? 'border-danger' : 'border-border'
+                  }`}
+                >
+                  <option value="">Selecciona caja o banco...</option>
+                  {allOptions.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                {accountError && (
+                  <p className="text-xs text-danger mt-1">Debes elegir a qué cuenta (caja o banco) va este movimiento.</p>
+                )}
+              </div>
+            )}
 
             {isTransfer && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

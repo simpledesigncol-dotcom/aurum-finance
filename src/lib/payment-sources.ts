@@ -48,10 +48,18 @@ export async function resolvePaymentSource(
     return { sourceType: 'bank_account', sourceId: account.id }
   }
 
-  const newAccount = await prisma.bankAccount.create({
-    data: { companyId, bankName: route.bankName!, accountType: 'savings' },
+  const fallback = await prisma.bankAccount.findFirst({
+    where: { companyId },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
   })
-  return { sourceType: 'bank_account', sourceId: newAccount.id }
+  if (fallback) {
+    return { sourceType: 'bank_account', sourceId: fallback.id }
+  }
+
+  throw new Error(
+    'No existe una cuenta bancaria configurada. Crea una cuenta en Bancos antes de registrar pagos digitales.'
+  )
 }
 
 export function isFullyPaidPaymentType(paymentType: string | null | undefined): boolean {

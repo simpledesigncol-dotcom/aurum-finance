@@ -221,6 +221,13 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!sourceType || !sourceId) {
+      return NextResponse.json(
+        { error: 'Debes indicar la cuenta (caja o banco) a la que va este movimiento (sourceType, sourceId)' },
+        { status: 400 }
+      )
+    }
+
     if (movementType === 'transfer') {
       return NextResponse.json(
         { error: 'Las transferencias se crean de forma atómica con POST /api/transfers' },
