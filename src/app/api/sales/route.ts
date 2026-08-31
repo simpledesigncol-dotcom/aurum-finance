@@ -190,6 +190,13 @@ export async function POST(request: Request) {
     return NextResponse.json(sale, { status: 201 })
   } catch (error) {
     console.error('Error creating sale:', error)
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('bancaria')) {
+      return NextResponse.json(
+        { error: 'Para registrar una venta pagan con método digital (Nequi, tarjeta, transferencia...) debes tener una cuenta bancaria configurada. Crea la cuenta en el módulo de Bancos y vuelve a intentar.' },
+        { status: 400 }
+      )
+    }
     return NextResponse.json(
       { error: 'Error al crear la venta' },
       { status: 500 }
