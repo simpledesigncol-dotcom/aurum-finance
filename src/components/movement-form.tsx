@@ -43,6 +43,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
   const [toAccount, setToAccount] = useState('')
   const [account, setAccount] = useState('')
   const [accountError, setAccountError] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -95,6 +96,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
     setSelectedEvent(eventType)
     updateForm('eventType', eventType)
     setStep('form')
+    setSubmitError('')
   }
 
   const isTransfer = selectedEvent === 'transfer'
@@ -191,50 +193,55 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
           return
         }
 
-        const res = await fetch('/api/movements', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            movementType: getMovementType(),
-            amount: parseFloat(form.amount),
-            direction: getDirection(),
-            occurredAt: form.movementDate,
-            movementDate: form.movementDate,
-            description: form.description || getEventLabel(),
-            contactName: form.contactName || null,
-            paymentType: form.paymentType,
-            notes: form.notes || null,
-            createdBy: 'default-user',
-            companyId: 'default',
-            status: form.status,
-            workOrderId: form.workOrderId || null,
-            sourceType: account.split(':')[0],
-            sourceId: account.split(':')[1],
-          }),
-        })
-
-        if (!res.ok) throw new Error('Failed')
-
-        const data = await res.json()
-        setTransactionId(data.transactionId)
-        setSuccess(true)
-        setTimeout(() => {
-          handleClose()
-          setForm({
-            eventType: null,
-            amount: '',
-            description: '',
-            movementDate: new Date().toISOString().split('T')[0],
-            contactName: '',
-            paymentType: 'cash',
-            notes: '',
-            status: 'confirmed',
-            workOrderId: '',
+          const res = await fetch('/api/movements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              movementType: getMovementType(),
+              amount: parseFloat(form.amount),
+              direction: getDirection(),
+              occurredAt: form.movementDate,
+              movementDate: form.movementDate,
+              description: form.description || getEventLabel(),
+              contactName: form.contactName || null,
+              paymentType: form.paymentType,
+              notes: form.notes || null,
+              createdBy: 'default-user',
+              companyId: 'default',
+              status: form.status,
+              workOrderId: form.workOrderId || null,
+              sourceType: account.split(':')[0],
+              sourceId: account.split(':')[1],
+            }),
           })
-          router.refresh()
-        }, 2000)
+
+          if (!res.ok) {
+            const bodyErr = await res.json().catch(() => null)
+            throw new Error(bodyErr?.detail || bodyErr?.error || `Error ${res.status}`)
+          }
+
+          const data = await res.json()
+          setTransactionId(data.transactionId)
+          setSuccess(true)
+          setTimeout(() => {
+            handleClose()
+            setForm({
+              eventType: null,
+              amount: '',
+              description: '',
+              movementDate: new Date().toISOString().split('T')[0],
+              contactName: '',
+              paymentType: 'cash',
+              notes: '',
+              status: 'confirmed',
+              workOrderId: '',
+            })
+            router.refresh()
+          }, 2000)
       } catch (err) {
         console.error(err)
+        setAccountError(false)
+        setSubmitError(err instanceof Error ? err.message : 'Error al registrar el movimiento')
       }
     })
   }
@@ -485,6 +492,12 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                 className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 resize-none placeholder:text-muted-foreground/50"
               />
             </div>
+
+            {submitError && (
+              <div className="p-3 rounded-lg border border-danger/30 bg-danger/[0.06] text-danger text-xs leading-relaxed">
+                {submitError}
+              </div>
+            )}
 
             <button
               type="submit"
