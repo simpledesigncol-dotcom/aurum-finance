@@ -41,7 +41,7 @@ export async function resolvePaymentSource(
   }
 
   const account = await prisma.bankAccount.findFirst({
-    where: { bankName: route.bankName, companyId },
+    where: { bankName: route.bankName, companyId, isActive: true },
     select: { id: true },
   })
   if (account) {
@@ -49,7 +49,7 @@ export async function resolvePaymentSource(
   }
 
   const fallback = await prisma.bankAccount.findFirst({
-    where: { companyId },
+    where: { companyId, isActive: true },
     orderBy: { createdAt: 'asc' },
     select: { id: true },
   })

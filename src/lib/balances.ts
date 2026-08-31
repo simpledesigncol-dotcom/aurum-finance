@@ -56,7 +56,7 @@ export async function getTotalCashBalance(companyId: string): Promise<number> {
 
 export async function getTotalBankBalance(companyId: string): Promise<number> {
   const accounts = await prisma.bankAccount.findMany({
-    where: { companyId },
+    where: { companyId, isActive: true },
     select: { id: true },
   })
 
@@ -138,7 +138,7 @@ export async function getCompanyPosition(companyId: string) {
         select: { id: true },
       }),
       prisma.bankAccount.findMany({
-        where: { companyId },
+        where: { companyId, isActive: true },
         select: { id: true },
       }),
       prisma.accountsReceivable.aggregate({
