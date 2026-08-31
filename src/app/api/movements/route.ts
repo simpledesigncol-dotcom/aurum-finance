@@ -33,10 +33,7 @@ function buildWhere(filters: MovementFilters) {
   if (filters.workOrderId) where.workOrderId = filters.workOrderId
 
   if (filters.paymentType) {
-    where.OR = [
-      { referenceType: 'sale', referenceId: { not: null } },
-      { referenceType: 'purchase', referenceId: { not: null } },
-    ]
+    where.metadata = { contains: `"paymentType":"${filters.paymentType}"` }
   }
 
   if (filters.search) {
@@ -45,6 +42,8 @@ function buildWhere(filters: MovementFilters) {
         { transactionId: { contains: filters.search, mode: 'insensitive' as const } },
         { description: { contains: filters.search, mode: 'insensitive' as const } },
         { notes: { contains: filters.search, mode: 'insensitive' as const } },
+        { contact: { name: { contains: filters.search, mode: 'insensitive' as const } } },
+        { category: { name: { contains: filters.search, mode: 'insensitive' as const } } },
       ],
     }
     if (where.OR) {

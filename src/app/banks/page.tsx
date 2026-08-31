@@ -109,7 +109,7 @@ export default function BanksPage() {
       setModalOpen(false)
       fetchAccounts()
     } catch {
-      setFormError('Error de conexion. Intente de nuevo.')
+      setFormError('Error de conexión. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -146,7 +146,7 @@ export default function BanksPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Bancos</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Cuentas bancarias</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors">
+        <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
           <Plus size={14} strokeWidth={1.8} />
           Nueva cuenta
         </button>
@@ -201,7 +201,7 @@ export default function BanksPage() {
               </div>
               <p className="text-xl font-bold tabular-nums tracking-tight truncate">{formatCurrency(acc.balance)}</p>
               <p className="text-xs text-muted-foreground mt-1 truncate">
-                {acc.accountNumber || 'Sin numero'}
+                {acc.accountNumber || 'Sin número'}
                 {acc.holderName && ` · ${acc.holderName}`}
               </p>
             </div>
@@ -244,7 +244,7 @@ export default function BanksPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Numero de cuenta</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Número de cuenta</label>
                 <input
                   type="text"
                   value={form.accountNumber}
@@ -272,7 +272,7 @@ export default function BanksPage() {
               <button
                 type="submit"
                 disabled={saving || !form.bankName.trim()}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue text-white hover:bg-blue/90 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
               </button>
@@ -284,7 +284,7 @@ export default function BanksPage() {
       {deleteTarget && (
         <ConfirmDialog
           title="Eliminar cuenta bancaria"
-          message={`¿Seguro que deseas eliminar la cuenta de "${deleteTarget.bankName}"? Esta accion no se puede deshacer.`}
+          message={`¿Seguro que deseas eliminar la cuenta de "${deleteTarget.bankName}"? Esta acción no se puede deshacer.`}
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}
         />

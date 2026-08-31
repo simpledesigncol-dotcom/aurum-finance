@@ -136,7 +136,7 @@ export default function DocumentsPage() {
         </div>
         <button
           onClick={() => { setSelectedFile(null); setUploadType('other'); setUploadModalOpen(true) }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
         >
           <Upload size={14} strokeWidth={1.8} />
           Subir documento
@@ -164,6 +164,7 @@ export default function DocumentsPage() {
 
       <div className="bg-card rounded-xl border border-border">
         <div className="px-5 py-3 border-b border-border flex items-center gap-3">
+          <h2 className="font-semibold text-sm">Documentos</h2>
           <Filter size={13} className="text-muted-foreground" />
           <select
             value={filterType}
@@ -198,13 +199,13 @@ export default function DocumentsPage() {
               const Icon = getFileIcon(doc.fileType)
               return (
                 <div key={doc.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors duration-150">
-                  <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
                     <Icon size={15} className="text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{doc.name}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-muted text-[10px] font-medium">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-xs font-medium">
                         {docTypeOptions.find(dt => dt.id === doc.documentType)?.label || doc.documentType}
                       </span>
                       <span>{formatFileSize(doc.fileSize)}</span>
@@ -268,7 +269,7 @@ export default function DocumentsPage() {
               />
               {selectedFile ? (
                 <div className="space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center mx-auto">
+                  <div className="w-10 h-10 rounded-full bg-success/[0.08] flex items-center justify-center mx-auto">
                     <FileText size={18} className="text-success" />
                   </div>
                   <p className="text-sm font-medium">{selectedFile.name}</p>
@@ -306,7 +307,7 @@ export default function DocumentsPage() {
               <button
                 onClick={handleUpload}
                 disabled={!selectedFile || uploading}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
                 Subir

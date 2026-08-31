@@ -149,7 +149,7 @@ export default function AssetsPage() {
       }
       setModalOpen(false)
     } catch {
-      setFormError('Error de conexion. Intente de nuevo.')
+      setFormError('Error de conexión. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -203,7 +203,7 @@ export default function AssetsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Activos Fijos</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Control de activos y depreciación</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors">
+        <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
           <Plus size={14} strokeWidth={1.8} />
           Nuevo activo
         </button>
@@ -256,10 +256,10 @@ export default function AssetsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium truncate">{asset.name}</p>
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                          asset.status === 'active' ? 'bg-success/10 text-success' :
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          asset.status === 'active' ? 'bg-success/[0.08] text-success' :
                           asset.status === 'inactive' ? 'bg-muted text-muted-foreground' :
-                          'bg-danger/10 text-danger'
+                          'bg-danger/[0.08] text-danger'
                         }`}>
                           {assetStatusOptions.find(s => s.id === asset.status)?.label || asset.status}
                         </span>
@@ -419,7 +419,7 @@ export default function AssetsPage() {
               <button
                 type="submit"
                 disabled={saving || !form.name || !form.purchasePrice || !form.usefulLifeMonths}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {saving ? <Loader2 size={13} className="animate-spin" /> : null}
                 {editing ? 'Actualizar' : 'Crear'}

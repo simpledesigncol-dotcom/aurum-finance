@@ -187,7 +187,7 @@ export default function TreasuryPage() {
     return (
       <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-5 animate-fade-in">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tesoreria</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Tesorería</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Vision consolidada del flujo de caja</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-8 text-center">
@@ -202,7 +202,7 @@ export default function TreasuryPage() {
       <div>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Tesoreria</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Tesorería</h1>
             <p className="text-muted-foreground text-sm mt-0.5">Vision consolidada del flujo de caja</p>
           </div>
           <div className="flex items-center gap-2">
@@ -210,7 +210,7 @@ export default function TreasuryPage() {
               <ArrowRightLeft size={14} strokeWidth={1.8} />
               Mover entre cuentas
             </button>
-            <button onClick={openArqueo} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors">
+            <button onClick={openArqueo} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
               <ClipboardCheck size={14} strokeWidth={1.8} />
               Realizar arqueo
             </button>
@@ -279,7 +279,7 @@ export default function TreasuryPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{a.bankName}</p>
-                  <p className="text-xs text-muted-foreground">{a.accountNumber || 'Sin numero'}</p>
+                  <p className="text-xs text-muted-foreground">{a.accountNumber || 'Sin número'}</p>
                 </div>
                 <p className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(a.balance)}</p>
               </div>
@@ -381,7 +381,7 @@ export default function TreasuryPage() {
                     ? 'Los saldos coinciden exactamente'
                     : 'Diferencia: ' + formatCurrency(Math.abs(totalDiff)) + ' (' + (totalDiff > 0 ? 'sobra' : 'falta') + ')'}
                 </p>
-                <button onClick={() => setArqueoOpen(false)} className="mt-4 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium">Cerrar</button>
+                <button onClick={() => setArqueoOpen(false)} className="mt-4 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">Cerrar</button>
               </div>
             ) : (
               <>
@@ -447,7 +447,7 @@ export default function TreasuryPage() {
 
                 <div className="flex justify-end gap-2 pt-2">
                   <button onClick={() => setArqueoOpen(false)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">Cancelar</button>
-                  <button onClick={handleSaveArqueo} disabled={savingArqueo} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50">
+                  <button onClick={handleSaveArqueo} disabled={savingArqueo} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
                     {savingArqueo ? <Loader2 size={12} className="animate-spin" /> : null}
                     {savingArqueo ? 'Guardando...' : 'Finalizar arqueo'}
                   </button>

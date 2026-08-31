@@ -56,7 +56,7 @@ export default function WorkOrderForm({ onClose, onCreated }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl border border-border shadow-xl w-full max-w-md animate-slide-up">
+      <div className="bg-card rounded-xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.12)] w-full max-w-md animate-slide-up">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="text-sm font-semibold">Nueva Orden de Trabajo</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted transition-colors">

@@ -45,7 +45,7 @@ export async function GET(
 
     const byCategory = movements.reduce(
       (acc, m) => {
-        const catName = m.category?.name || 'Sin categoria'
+        const catName = m.category?.name || 'Sin categoría'
         if (!acc[catName]) {
           acc[catName] = { income: 0, costs: 0, count: 0 }
         }

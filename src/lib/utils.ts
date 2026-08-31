@@ -127,19 +127,19 @@ export function movementTypeLabel(type: string): string {
 
 export function movementTypeColor(type: string): string {
   const colors: Record<string, string> = {
-    income: 'text-emerald-600 bg-emerald-50',
-    expense: 'text-red-600 bg-red-50',
-    transfer: 'text-blue-600 bg-blue-50',
-    sale: 'text-emerald-600 bg-emerald-50',
-    purchase: 'text-amber-600 bg-amber-50',
-    ar_payment: 'text-emerald-600 bg-emerald-50',
-    ap_payment: 'text-red-600 bg-red-50',
-    obligation_payment: 'text-red-600 bg-red-50',
-    obligation_received: 'text-blue-600 bg-blue-50',
-    capital_contribution: 'text-emerald-600 bg-emerald-50',
-    adjustment: 'text-slate-600 bg-slate-50',
+    income: 'text-success bg-success/[0.08]',
+    expense: 'text-danger bg-danger/[0.08]',
+    transfer: 'text-blue bg-blue/[0.08]',
+    sale: 'text-success bg-success/[0.08]',
+    purchase: 'text-warning bg-warning/[0.08]',
+    ar_payment: 'text-success bg-success/[0.08]',
+    ap_payment: 'text-danger bg-danger/[0.08]',
+    obligation_payment: 'text-danger bg-danger/[0.08]',
+    obligation_received: 'text-blue bg-blue/[0.08]',
+    capital_contribution: 'text-success bg-success/[0.08]',
+    adjustment: 'text-muted-foreground bg-muted',
   }
-  return colors[type] || 'text-slate-600 bg-slate-50'
+  return colors[type] || 'text-muted-foreground bg-muted'
 }
 
 export function statusLabel(status: string): string {
@@ -160,16 +160,16 @@ export function statusLabel(status: string): string {
 
 export function statusColor(status: string): string {
   const colors: Record<string, string> = {
-    confirmed: 'text-emerald-600 bg-emerald-50',
-    pending: 'text-amber-600 bg-amber-50',
-    draft: 'text-slate-500 bg-slate-50',
-    cancelled: 'text-red-600 bg-red-50',
-    open: 'text-blue-600 bg-blue-50',
-    in_progress: 'text-amber-600 bg-amber-50',
-    completed: 'text-emerald-600 bg-emerald-50',
-    closed: 'text-slate-500 bg-slate-50',
-    paid: 'text-emerald-600 bg-emerald-50',
-    partial: 'text-amber-600 bg-amber-50',
+    confirmed: 'text-success bg-success/[0.08]',
+    pending: 'text-warning bg-warning/[0.08]',
+    draft: 'text-muted-foreground bg-muted',
+    cancelled: 'text-danger bg-danger/[0.08]',
+    open: 'text-blue bg-blue/[0.08]',
+    in_progress: 'text-warning bg-warning/[0.08]',
+    completed: 'text-success bg-success/[0.08]',
+    closed: 'text-muted-foreground bg-muted',
+    paid: 'text-success bg-success/[0.08]',
+    partial: 'text-warning bg-warning/[0.08]',
   }
-  return colors[status] || 'text-slate-600 bg-slate-50'
+  return colors[status] || 'text-muted-foreground bg-muted'
 }

@@ -194,7 +194,7 @@ export default function WorkOrderDetailPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight">#{order.orderNumber}</h1>
-              <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium', statusColor(order.status))}>
+              <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', statusColor(order.status))}>
                 {statusLabel(order.status)}
               </span>
             </div>
@@ -302,7 +302,7 @@ export default function WorkOrderDetailPage() {
                     </p>
                     <p className="text-xs text-muted-foreground">{formatShortDate(m.movementDate)}</p>
                   </div>
-                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0', statusColor(m.status))}>
+                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium shrink-0', statusColor(m.status))}>
                     {statusLabel(m.status)}
                   </span>
                 </div>
@@ -365,7 +365,7 @@ export default function WorkOrderDetailPage() {
                     value={editForm.vehiclePlate}
                     onChange={e => setEditForm(f => ({ ...f, vehiclePlate: e.target.value }))}
                     placeholder="ABC123"
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                   />
                 </div>
                 <div>
@@ -375,7 +375,7 @@ export default function WorkOrderDetailPage() {
                     value={editForm.vehicleInfo}
                     onChange={e => setEditForm(f => ({ ...f, vehicleInfo: e.target.value }))}
                     placeholder="Marca, modelo, color..."
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                   />
                 </div>
               </div>
@@ -386,7 +386,7 @@ export default function WorkOrderDetailPage() {
                   onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
                   rows={3}
                   placeholder="Detalles del trabajo a realizar..."
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 resize-none"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 resize-none"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -395,7 +395,7 @@ export default function WorkOrderDetailPage() {
                   <select
                     value={editForm.status}
                     onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                   >
                     {WORK_ORDER_STATUSES.map(s => (
                       <option key={s.id} value={s.id}>{s.label}</option>
@@ -408,7 +408,7 @@ export default function WorkOrderDetailPage() {
                     type="date"
                     value={editForm.startDate}
                     onChange={e => setEditForm(f => ({ ...f, startDate: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                   />
                 </div>
                 <div>
@@ -417,7 +417,7 @@ export default function WorkOrderDetailPage() {
                     type="date"
                     value={editForm.endDate}
                     onChange={e => setEditForm(f => ({ ...f, endDate: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                   />
                 </div>
               </div>

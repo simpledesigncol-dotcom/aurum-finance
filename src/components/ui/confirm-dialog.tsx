@@ -33,7 +33,7 @@ export default function ConfirmDialog({
           <button onClick={onCancel} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">
             {cancelLabel}
           </button>
-          <button onClick={onConfirm} className={`px-3 py-1.5 text-xs font-medium rounded-lg text-white transition-colors ${danger ? 'bg-danger hover:bg-danger/90' : 'bg-blue hover:bg-blue/90'}`}>
+          <button onClick={onConfirm} className={`px-3 py-1.5 text-xs font-medium rounded-lg text-white transition-colors ${danger ? 'bg-danger hover:bg-danger/90' : 'bg-primary hover:bg-primary/90'}`}>
             {confirmLabel}
           </button>
         </div>

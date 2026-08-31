@@ -46,7 +46,7 @@ export default async function AuditPage() {
       </div>
 
       {logs.length === 0 ? (
-        <div className="bg-white rounded-xl border border-border p-12 text-center">
+        <div className="bg-card rounded-xl border border-border p-12 text-center">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
             <ShieldCheck size={22} className="text-muted-foreground/60" />
           </div>

@@ -159,7 +159,7 @@ export default function PurchasesPage() {
       setModalOpen(false)
       fetchPurchases()
     } catch {
-      setFormError('Error de conexion. Intente de nuevo.')
+      setFormError('Error de conexión. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -197,7 +197,7 @@ export default function PurchasesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Compras</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Registro de compras e insumos</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-1.5 bg-blue text-white text-xs font-medium rounded-lg px-3 py-1.5 hover:bg-blue/90 transition-colors">
+        <button onClick={openCreate} className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors">
           <Plus size={14} strokeWidth={1.8} />
           Nueva compra
         </button>
@@ -251,7 +251,7 @@ export default function PurchasesPage() {
                       {purchase.contact?.name || purchase.invoiceNumber || 'Compra'}
                     </p>
                     <p className="text-xs text-muted-foreground min-w-0 truncate">
-                      {purchase.items.length} articulo{purchase.items.length !== 1 ? 's' : ''} · {purchase.purchaseType}
+                      {purchase.items.length} artículo{purchase.items.length !== 1 ? 's' : ''} · {purchase.purchaseType}
                     </p>
                   </div>
                   <div className="text-right shrink-0 hidden sm:block">
@@ -319,7 +319,7 @@ export default function PurchasesPage() {
                   value={form.invoiceNumber}
                   onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })}
                   className={inputClass}
-                  placeholder="Numero de factura"
+                  placeholder="Número de factura"
                 />
               </div>
               <div className="space-y-1">
@@ -422,7 +422,7 @@ export default function PurchasesPage() {
               <button
                 type="submit"
                 disabled={saving || !form.purchaseDate || form.items.every(i => !i.itemName.trim())}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue text-white hover:bg-blue/90 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
               </button>
@@ -434,7 +434,7 @@ export default function PurchasesPage() {
       {deleteTarget && (
         <ConfirmDialog
           title="Eliminar compra"
-          message={`¿Seguro que deseas eliminar esta compra de ${formatCurrency(deleteTarget.total)}? Esta accion no se puede deshacer.`}
+          message={`¿Seguro que deseas eliminar esta compra de ${formatCurrency(deleteTarget.total)}? Esta acción no se puede deshacer.`}
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}
         />

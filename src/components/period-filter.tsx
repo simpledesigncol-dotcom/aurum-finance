@@ -7,7 +7,7 @@ const periods = [
   { id: 'week', label: 'Semana' },
   { id: 'month', label: 'Mes' },
   { id: 'quarter', label: 'Trimestre' },
-  { id: 'year', label: 'Ano' },
+  { id: 'year', label: 'Año' },
 ]
 
 export default function PeriodFilter() {

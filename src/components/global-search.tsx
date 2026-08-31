@@ -34,7 +34,7 @@ const TYPE_LABELS: Record<string, string> = {
   expense: 'Gasto',
   purchase: 'Compra',
   contact: 'Contacto',
-  obligation: 'Obligacion',
+  obligation: 'Obligación',
   receivable: 'CxC',
   payable: 'CxP',
   document: 'Documento',

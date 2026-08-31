@@ -12,6 +12,7 @@ import { formatCurrency, formatShortDate, formatTime, formatDateTime, formatNumb
 import { MOVEMENT_TYPES, PAYMENT_TYPES, MOVEMENT_STATUSES, QUICK_FILTERS } from '@/lib/constants'
 import MovementForm from '@/components/movement-form'
 import Modal from '@/components/ui/modal'
+import ConfirmDialog from '@/components/ui/confirm-dialog'
 
 type Movement = {
   id: string
@@ -76,7 +77,7 @@ export default function MovementsPage() {
   const [showForm, setShowForm] = useState(false)
   const [selectedMovement, setSelectedMovement] = useState<Movement | null>(null)
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<Movement | null>(null)
 
   const [filters, setFilters] = useState({
     movementType: '',
@@ -94,16 +95,18 @@ export default function MovementsPage() {
     return Object.values(filters).filter(v => v !== '').length
   }, [filters])
 
-  const buildQueryParams = useCallback(() => {
+const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams()
     params.set('limit', String(pagination.limit))
-
-    let page = pagination.page
-    params.set('page', String(page))
+    params.set('page', String(pagination.page))
 
     if (filters.movementType) params.set('movementType', filters.movementType)
     if (filters.status) params.set('status', filters.status)
     if (filters.sourceType) params.set('sourceType', filters.sourceType)
+    if (filters.workOrderId) params.set('workOrderId', filters.workOrderId)
+    if (filters.categoryId) params.set('categoryId', filters.categoryId)
+    if (filters.contactId) params.set('contactId', filters.contactId)
+    if (filters.paymentType) params.set('paymentType', filters.paymentType)
 
     if (period) {
       const now = new Date()
@@ -131,47 +134,15 @@ export default function MovementsPage() {
       }
     }
 
-    if (quickFilter) {
-      const now = new Date()
-      switch (quickFilter) {
-        case 'today': {
-          const s = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-          params.set('dateFrom', s.toISOString())
-          params.set('dateTo', new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString())
-          break
-        }
-        case 'week': {
-          const s = new Date(now)
-          s.setDate(now.getDate() - now.getDay())
-          s.setHours(0, 0, 0, 0)
-          params.set('dateFrom', s.toISOString())
-          break
-        }
-        case 'month': {
-          const s = new Date(now.getFullYear(), now.getMonth(), 1)
-          params.set('dateFrom', s.toISOString())
-          break
-        }
-        case 'no-ot':
-          params.set('noWorkOrder', 'true')
-          break
-        case 'no-receipt':
-          params.set('noReceipt', 'true')
-          break
-        case 'cash':
-          params.set('sourceType', 'cash_register')
-          break
-        case 'pending':
-          params.set('status', 'pending')
-          break
-      }
-    }
+    if (quickFilter) params.set('quickFilter', quickFilter)
+
+    if (search) params.set('search', search)
 
     if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
     if (filters.dateTo) params.set('dateTo', filters.dateTo)
 
     return params.toString()
-  }, [pagination.page, pagination.limit, filters, period, quickFilter])
+  }, [pagination.page, pagination.limit, filters, period, quickFilter, search])
 
   const fetchMovements = useCallback(async () => {
     setLoading(true)
@@ -180,51 +151,18 @@ export default function MovementsPage() {
       const res = await fetch(`/api/movements?${query}`)
       if (!res.ok) throw new Error('Error fetching')
       const data = await res.json()
-      let items: Movement[] = data.movements || []
-
-      if (search) {
-        const s = search.toLowerCase()
-        items = items.filter((m: Movement) =>
-          m.description?.toLowerCase().includes(s) ||
-          m.transactionId.toLowerCase().includes(s) ||
-          m.contact?.name?.toLowerCase().includes(s) ||
-          m.category?.name?.toLowerCase().includes(s) ||
-          movementTypeLabel(m.movementType).toLowerCase().includes(s)
-        )
-      }
-
-      if (filters.workOrderId) {
-        items = items.filter((m: Movement) =>
-          m.workOrderId?.toLowerCase().includes(filters.workOrderId.toLowerCase())
-        )
-      }
-      if (filters.categoryId) {
-        items = items.filter((m: Movement) =>
-          m.categoryId?.toLowerCase().includes(filters.categoryId.toLowerCase())
-        )
-      }
-      if (filters.contactId) {
-        items = items.filter((m: Movement) =>
-          m.contactId?.toLowerCase().includes(filters.contactId.toLowerCase())
-        )
-      }
-      if (filters.paymentType) {
-        items = items.filter((m: Movement) => {
-          try {
-            const meta = m.metadata ? JSON.parse(m.metadata) : null
-            return meta?.paymentType === filters.paymentType
-          } catch { return false }
-        })
-      }
-
-setMovements(items)
-      setPagination(prev => ({ ...prev, total: data.pagination?.total ?? items.length, pages: data.pagination?.totalPages ?? data.pagination?.pages ?? 1 }))
+      setMovements(data.movements || [])
+      setPagination(prev => ({
+        ...prev,
+        total: data.pagination?.total ?? 0,
+        pages: data.pagination?.totalPages ?? 1,
+      }))
     } catch {
       setMovements([])
     } finally {
       setLoading(false)
     }
-  }, [buildQueryParams, search, filters])
+  }, [buildQueryParams])
 
   useEffect(() => {
     fetchMovements()
@@ -291,8 +229,8 @@ setMovements(items)
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar movimientos..."
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 placeholder:text-muted-foreground/50"
+placeholder="Buscar movimientos..."
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 placeholder:text-muted-foreground/50"
           />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -303,7 +241,7 @@ setMovements(items)
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-all duration-150',
+            'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-150',
             showAdvanced || activeFilterCount > 0
               ? 'bg-blue/[0.06] border-blue/20 text-blue'
               : 'border-border text-muted-foreground hover:bg-muted'
@@ -349,7 +287,7 @@ setMovements(items)
               <select
                 value={filters.movementType}
                 onChange={e => setFilters(f => ({ ...f, movementType: e.target.value }))}
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
               >
                 <option value="">Todos</option>
                 {MOVEMENT_TYPES.map(mt => (
@@ -362,7 +300,7 @@ setMovements(items)
               <select
                 value={filters.sourceType}
                 onChange={e => setFilters(f => ({ ...f, sourceType: e.target.value }))}
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
               >
                 <option value="">Todas</option>
                 <option value="cash_register">Caja</option>
@@ -374,7 +312,7 @@ setMovements(items)
               <select
                 value={filters.paymentType}
                 onChange={e => setFilters(f => ({ ...f, paymentType: e.target.value }))}
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
               >
                 <option value="">Todos</option>
                 {PAYMENT_TYPES.map(pt => (
@@ -387,7 +325,7 @@ setMovements(items)
               <select
                 value={filters.status}
                 onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
               >
                 <option value="">Todos</option>
                 {MOVEMENT_STATUSES.map(ms => (
@@ -402,7 +340,7 @@ setMovements(items)
                 value={filters.workOrderId}
                 onChange={e => setFilters(f => ({ ...f, workOrderId: e.target.value }))}
                 placeholder="Buscar por OT..."
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all placeholder:text-muted-foreground/50"
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all placeholder:text-muted-foreground/50"
               />
             </div>
             <div>
@@ -412,7 +350,7 @@ setMovements(items)
                 value={filters.categoryId}
                 onChange={e => setFilters(f => ({ ...f, categoryId: e.target.value }))}
                 placeholder="Buscar por categoría..."
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all placeholder:text-muted-foreground/50"
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all placeholder:text-muted-foreground/50"
               />
             </div>
             <div>
@@ -422,7 +360,7 @@ setMovements(items)
                 value={filters.contactId}
                 onChange={e => setFilters(f => ({ ...f, contactId: e.target.value }))}
                 placeholder="Buscar por persona..."
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all placeholder:text-muted-foreground/50"
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all placeholder:text-muted-foreground/50"
               />
             </div>
             <div>
@@ -431,7 +369,7 @@ setMovements(items)
                 type="date"
                 value={filters.dateFrom}
                 onChange={e => setFilters(f => ({ ...f, dateFrom: e.target.value }))}
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
               />
             </div>
             <div>
@@ -440,14 +378,18 @@ setMovements(items)
                 type="date"
                 value={filters.dateTo}
                 onChange={e => setFilters(f => ({ ...f, dateTo: e.target.value }))}
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
               />
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+<div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+          <h2 className="font-semibold text-sm">Movimientos</h2>
+          <span className="text-xs text-muted-foreground">{formatNumber(pagination.total)} registros</span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -562,7 +504,7 @@ setMovements(items)
                         </p>
                       </td>
                       <td className="px-5 py-3 text-right whitespace-nowrap hidden sm:table-cell">
-                        <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium', stColors)}>
+                        <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', stColors)}>
                           {statusLabel(m.status)}
                         </span>
                       </td>
@@ -614,17 +556,13 @@ setMovements(items)
             setEditingMovement(selectedMovement)
             setSelectedMovement(null)
           }}
-          onDelete={async () => {
-            if (confirm('¿Eliminar este movimiento? Esta acción no se puede deshacer.')) {
-              await fetch(`/api/movements?id=${selectedMovement.id}`, { method: 'DELETE' })
-              setSelectedMovement(null)
-              fetchMovements()
-            }
+onDelete={async () => {
+            setDeleteConfirm(selectedMovement)
           }}
         />
       )}
 
-      {editingMovement && (
+{editingMovement && (
         <MovementEditForm
           movement={editingMovement}
           onClose={() => setEditingMovement(null)}
@@ -632,6 +570,20 @@ setMovements(items)
             setEditingMovement(null)
             fetchMovements()
           }}
+        />
+      )}
+
+      {deleteConfirm && (
+        <ConfirmDialog
+          title="Eliminar movimiento"
+          message={`¿Seguro que deseas eliminar este movimiento por ${formatCurrency(deleteConfirm.amount)}? Esta acción no se puede deshacer.`}
+          onConfirm={async () => {
+            await fetch(`/api/movements?id=${deleteConfirm.id}`, { method: 'DELETE' })
+            setDeleteConfirm(null)
+            setSelectedMovement(null)
+            fetchMovements()
+          }}
+          onCancel={() => setDeleteConfirm(null)}
         />
       )}
     </div>
@@ -658,7 +610,7 @@ function MovementDetail({ movement, onClose, onEdit, onDelete }: { movement: Mov
               <Pencil size={15} />
             </button>
             <button onClick={onDelete}
-              className="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-muted-foreground hover:text-danger transition-colors" title="Eliminar">
+              className="w-8 h-8 rounded-lg hover:bg-danger/10 flex items-center justify-center text-muted-foreground hover:text-danger transition-colors" title="Eliminar">
               <Trash2 size={15} />
             </button>
           </div>
@@ -692,12 +644,12 @@ function MovementDetail({ movement, onClose, onEdit, onDelete }: { movement: Mov
           <div className="grid grid-cols-2 gap-3">
             <DetailRow label="ID Transacción" value={movement.transactionId} mono />
             <DetailRow label="Estado">
-              <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium', statusColor(movement.status))}>
+              <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', statusColor(movement.status))}>
                 {statusLabel(movement.status)}
               </span>
             </DetailRow>
             <DetailRow label="Tipo">
-              <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium', movementTypeColor(movement.movementType))}>
+              <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', movementTypeColor(movement.movementType))}>
                 {movementTypeLabel(movement.movementType)}
               </span>
             </DetailRow>

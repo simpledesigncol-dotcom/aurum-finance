@@ -551,14 +551,14 @@ export default function ReportsPage() {
               </button>
             ))}
           </div>
-          <button onClick={() => setExportOpen(!exportOpen)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors">
+          <button onClick={() => setExportOpen(!exportOpen)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
             <Download size={13} />
             Exportar
           </button>
           {exportOpen && (
             <div className="absolute top-full right-0 mt-1 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
               <button onClick={exportExcel} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium hover:bg-muted transition-colors text-left">
-                <FileSpreadsheet size={15} className="text-emerald-600" />
+                <FileSpreadsheet size={15} className="text-success" />
                 <div>
                   <p className="text-sm">Excel</p>
                   <p className="text-[10px] text-muted-foreground">Reporte completo en .xlsx</p>
@@ -566,7 +566,7 @@ export default function ReportsPage() {
               </button>
               <div className="h-px bg-border" />
               <button onClick={exportPdf} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-medium hover:bg-muted transition-colors text-left">
-                <FileText size={15} className="text-red-600" />
+                <FileText size={15} className="text-danger" />
                 <div>
                   <p className="text-sm">PDF</p>
                   <p className="text-[10px] text-muted-foreground">Versión para imprimir/enviar</p>
@@ -581,15 +581,15 @@ export default function ReportsPage() {
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ingresos</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
-              <ArrowDownLeft size={14} className="text-emerald-600" />
+            <div className="w-7 h-7 rounded-lg bg-success/[0.08] flex items-center justify-center">
+              <ArrowDownLeft size={14} className="text-success" />
             </div>
           </div>
-          <p className="text-xl font-bold tabular-nums tracking-tight text-emerald-600">{formatCurrency(totalIncome)}</p>
+          <p className="text-xl font-bold tabular-nums tracking-tight text-success">{formatCurrency(totalIncome)}</p>
           <p className="text-[11px] text-muted-foreground mt-1">
             {periodMovements.filter(isIncoming).length} transacciones
             {incomeChange !== 0 && (
-              <span className={`ml-1 font-medium ${incomeChange > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <span className={`ml-1 font-medium ${incomeChange > 0 ? 'text-success' : 'text-danger'}`}>
                 {incomeChange > 0 ? '↑' : '↓'}{Math.abs(incomeChange).toFixed(1)}%
               </span>
             )}
@@ -598,15 +598,15 @@ export default function ReportsPage() {
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Gastos</span>
-            <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center">
-              <ArrowUpRight size={14} className="text-red-600" />
+            <div className="w-7 h-7 rounded-lg bg-danger/[0.08] flex items-center justify-center">
+              <ArrowUpRight size={14} className="text-danger" />
             </div>
           </div>
-          <p className="text-xl font-bold tabular-nums tracking-tight text-red-600">{formatCurrency(totalExpenses)}</p>
+          <p className="text-xl font-bold tabular-nums tracking-tight text-danger">{formatCurrency(totalExpenses)}</p>
           <p className="text-[11px] text-muted-foreground mt-1">
             {periodMovements.filter(isOutgoing).length} transacciones
             {expenseChange !== 0 && (
-              <span className={`ml-1 font-medium ${expenseChange > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+              <span className={`ml-1 font-medium ${expenseChange > 0 ? 'text-danger' : 'text-success'}`}>
                 {expenseChange > 0 ? '↑' : '↓'}{Math.abs(expenseChange).toFixed(1)}%
               </span>
             )}
@@ -615,11 +615,11 @@ export default function ReportsPage() {
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Flujo neto</span>
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${netFlow >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
-              {netFlow >= 0 ? <TrendingUp size={14} className="text-emerald-600" /> : <TrendingDown size={14} className="text-red-600" />}
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${netFlow >= 0 ? 'bg-success/[0.08]' : 'bg-danger/[0.08]'}`}>
+              {netFlow >= 0 ? <TrendingUp size={14} className="text-success" /> : <TrendingDown size={14} className="text-danger" />}
             </div>
           </div>
-          <p className={`text-xl font-bold tabular-nums tracking-tight ${netFlow >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <p className={`text-xl font-bold tabular-nums tracking-tight ${netFlow >= 0 ? 'text-success' : 'text-danger'}`}>
             {formatCurrency(netFlow)}
           </p>
           <p className="text-[11px] text-muted-foreground mt-1">
@@ -629,8 +629,8 @@ export default function ReportsPage() {
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Promedio gasto</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
-              <Receipt size={14} className="text-amber-600" />
+            <div className="w-7 h-7 rounded-lg bg-warning/[0.08] flex items-center justify-center">
+              <Receipt size={14} className="text-warning" />
             </div>
           </div>
           <p className="text-xl font-bold tabular-nums tracking-tight">
@@ -653,8 +653,8 @@ export default function ReportsPage() {
       <div className="space-y-4">
         <SectionCard title="Flujo de caja" subtitle={`Ingresos vs gastos por ${period === 'month' ? 'semana' : period === 'quarter' ? 'mes' : 'mes'}`}>
           <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500/70" />Ingresos</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400/70" />Gastos</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-success/70" />Ingresos</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-danger/70" />Gastos</span>
           </div>
           {barData.length > 0 ? (
             <div className="flex items-end gap-1 h-48 px-1 overflow-x-auto">
@@ -666,12 +666,12 @@ export default function ReportsPage() {
                   <div key={i} className="flex-1 min-w-[32px] flex flex-col items-center gap-1 group relative">
                     <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-foreground text-white text-[10px] px-2.5 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
                       <div className="font-medium mb-0.5">{d.label}</div>
-                      <div className="text-emerald-400 font-medium">+{formatCurrency(d.income)}</div>
-                      <div className="text-red-400 font-medium">-{formatCurrency(d.expenses)}</div>
+                      <div className="text-success font-medium">+{formatCurrency(d.income)}</div>
+                      <div className="text-danger font-medium">-{formatCurrency(d.expenses)}</div>
                     </div>
                     <div className="w-full flex gap-[3px] items-end" style={{ height: '100%' }}>
-                      <div className="flex-1 rounded-[3px] bg-emerald-500/60 hover:bg-emerald-500 transition-colors duration-150" style={{ height: `${Math.max(incomeH, 1)}%` }} />
-                      <div className="flex-1 rounded-[3px] bg-red-400/40 hover:bg-red-400/60 transition-colors duration-150" style={{ height: `${Math.max(expenseH, 1)}%` }} />
+                      <div className="flex-1 rounded-[3px] bg-success/60 hover:bg-success transition-colors duration-150" style={{ height: `${Math.max(incomeH, 1)}%` }} />
+                      <div className="flex-1 rounded-[3px] bg-danger/40 hover:bg-danger/60 transition-colors duration-150" style={{ height: `${Math.max(expenseH, 1)}%` }} />
                     </div>
                     <span className="text-[10px] text-muted-foreground font-medium">{d.label}</span>
                   </div>
@@ -684,15 +684,15 @@ export default function ReportsPage() {
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div className="rounded-lg bg-muted/50 p-2.5 text-center">
               <span className="text-[10px] text-muted-foreground uppercase block">Total ingresos</span>
-              <p className="text-sm font-bold tabular-nums text-emerald-600">{formatCurrency(totalIncome)}</p>
+              <p className="text-sm font-bold tabular-nums text-success">{formatCurrency(totalIncome)}</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-2.5 text-center">
               <span className="text-[10px] text-muted-foreground uppercase block">Total gastos</span>
-              <p className="text-sm font-bold tabular-nums text-red-600">{formatCurrency(totalExpenses)}</p>
+              <p className="text-sm font-bold tabular-nums text-danger">{formatCurrency(totalExpenses)}</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-2.5 text-center">
               <span className="text-[10px] text-muted-foreground uppercase block">Neto</span>
-              <p className={`text-sm font-bold tabular-nums ${netFlow >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(netFlow)}</p>
+              <p className={`text-sm font-bold tabular-nums ${netFlow >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(netFlow)}</p>
             </div>
           </div>
         </SectionCard>
@@ -714,11 +714,11 @@ export default function ReportsPage() {
                           <span className="text-xs font-medium truncate max-w-[160px]">{cat.name}</span>
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] text-muted-foreground">{cat.count} txn</span>
-                            <span className="text-xs tabular-nums font-medium text-emerald-600">{formatCurrency(cat.total)}</span>
+                            <span className="text-xs tabular-nums font-medium text-success">{formatCurrency(cat.total)}</span>
                           </div>
                         </div>
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-500/50 rounded-full transition-all" style={{ width: `${(cat.total / maxCat) * 100}%` }} />
+                          <div className="h-full bg-success/50 rounded-full transition-all" style={{ width: `${(cat.total / maxCat) * 100}%` }} />
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-0.5">{totalCatIncome > 0 ? ((cat.total / totalCatIncome) * 100).toFixed(1) : 0}% del total</p>
                       </div>
@@ -736,10 +736,10 @@ export default function ReportsPage() {
                   {topClients.map(([name, amount], i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                        <span className="w-5 h-5 rounded-full bg-success/[0.08] text-success text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
                         <span className="text-xs font-medium truncate max-w-[180px]">{name}</span>
                       </div>
-                      <span className="text-xs font-semibold tabular-nums text-emerald-600">{formatCurrency(amount)}</span>
+                      <span className="text-xs font-semibold tabular-nums text-success">{formatCurrency(amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -755,7 +755,7 @@ export default function ReportsPage() {
             <div className="space-y-3">
               {sortedExpenseCategories.map((cat, i) => {
                 const pct = totalCatExpenses > 0 ? (cat.total / totalCatExpenses) * 100 : 0
-                const color = i === 0 ? 'bg-red-500' : i === 1 ? 'bg-red-400' : i === 2 ? 'bg-red-300' : 'bg-red-200'
+                const color = i === 0 ? 'bg-danger' : i === 1 ? 'bg-red-400' : i === 2 ? 'bg-red-300' : 'bg-red-200'
                 return (
                   <div key={i}>
                     <div className="flex items-center justify-between mb-1">
@@ -766,7 +766,7 @@ export default function ReportsPage() {
                       <div className="flex items-center gap-3">
                         <span className="text-[10px] text-muted-foreground">{cat.count} txn</span>
                         <span className="text-[10px] text-muted-foreground tabular-nums">{pct.toFixed(1)}%</span>
-                        <span className="text-xs font-semibold tabular-nums text-red-600">{formatCurrency(cat.total)}</span>
+                        <span className="text-xs font-semibold tabular-nums text-danger">{formatCurrency(cat.total)}</span>
                       </div>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -777,7 +777,7 @@ export default function ReportsPage() {
               })}
               <div className="pt-2 border-t border-border flex items-center justify-between">
                 <span className="text-xs font-semibold">Total gastos</span>
-                <span className="text-sm font-bold tabular-nums text-red-600">{formatCurrency(totalCatExpenses)}</span>
+                <span className="text-sm font-bold tabular-nums text-danger">{formatCurrency(totalCatExpenses)}</span>
               </div>
             </div>
           )}
@@ -792,12 +792,12 @@ export default function ReportsPage() {
                 const pct = totalExpenses > 0 ? (data.total / totalExpenses) * 100 : 0
                 return (
                   <div key={i} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                    <span className="w-6 h-6 rounded-full bg-red-50 text-red-600 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                    <span className="w-6 h-6 rounded-full bg-danger/[0.08] text-danger text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{name}</p>
                       <p className="text-[10px] text-muted-foreground">{data.count} transacciones · {pct.toFixed(1)}% del total</p>
                     </div>
-                    <span className="text-xs font-semibold tabular-nums text-red-600 shrink-0">{formatCurrency(data.total)}</span>
+                    <span className="text-xs font-semibold tabular-nums text-danger shrink-0">{formatCurrency(data.total)}</span>
                   </div>
                 )
               })}
@@ -832,12 +832,12 @@ export default function ReportsPage() {
                       <td className="py-2.5 pr-3 font-medium">{wo.orderNumber}</td>
                       <td className="py-2.5 pr-3 text-muted-foreground">{wo.vehiclePlate || wo.vehicleInfo || '—'}</td>
                       <td className="py-2.5 pr-3 text-muted-foreground truncate max-w-[140px]">{wo.contact?.name || '—'}</td>
-                      <td className="py-2.5 pr-3 text-right tabular-nums text-emerald-600">{formatCurrency(wo.income)}</td>
-                      <td className="py-2.5 pr-3 text-right tabular-nums text-red-600">{formatCurrency(wo.cost)}</td>
-                      <td className={`py-2.5 pr-3 text-right tabular-nums font-medium ${wo.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      <td className="py-2.5 pr-3 text-right tabular-nums text-success">{formatCurrency(wo.income)}</td>
+                      <td className="py-2.5 pr-3 text-right tabular-nums text-danger">{formatCurrency(wo.cost)}</td>
+                      <td className={`py-2.5 pr-3 text-right tabular-nums font-medium ${wo.profit >= 0 ? 'text-success' : 'text-danger'}`}>
                         {formatCurrency(wo.profit)}
                       </td>
-                      <td className={`py-2.5 text-right tabular-nums font-medium ${wo.margin >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      <td className={`py-2.5 text-right tabular-nums font-medium ${wo.margin >= 0 ? 'text-success' : 'text-danger'}`}>
                         {wo.margin.toFixed(1)}%
                       </td>
                     </tr>
@@ -893,8 +893,8 @@ export default function ReportsPage() {
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500/70" />Ingresos</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400/70" />Gastos</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-success/70" />Ingresos</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-danger/70" />Gastos</span>
               </div>
               <div className="flex items-end gap-1 h-32">
                 {prevMonthData.map((d, i) => {
@@ -903,12 +903,12 @@ export default function ReportsPage() {
                     <div key={i} className="flex-1 min-w-[28px] flex flex-col items-center gap-0.5 group relative">
                       <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-foreground text-white text-[10px] px-2 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
                         <div className="font-medium">{d.label}</div>
-                        <div className="text-emerald-400">+{formatCurrency(d.income)}</div>
-                        <div className="text-red-400">-{formatCurrency(d.expenses)}</div>
+                        <div className="text-success">+{formatCurrency(d.income)}</div>
+                        <div className="text-danger">-{formatCurrency(d.expenses)}</div>
                       </div>
                       <div className="w-full flex gap-[2px] items-end" style={{ height: '100%' }}>
-                        <div className="flex-1 rounded-[3px] bg-emerald-500/60 hover:bg-emerald-500 transition-colors" style={{ height: `${Math.max((d.income / maxVal) * 100, 1)}%` }} />
-                        <div className="flex-1 rounded-[3px] bg-red-400/40 hover:bg-red-400/60 transition-colors" style={{ height: `${Math.max((d.expenses / maxVal) * 100, 1)}%` }} />
+                        <div className="flex-1 rounded-[3px] bg-success/60 hover:bg-success transition-colors" style={{ height: `${Math.max((d.income / maxVal) * 100, 1)}%` }} />
+                        <div className="flex-1 rounded-[3px] bg-danger/40 hover:bg-danger/60 transition-colors" style={{ height: `${Math.max((d.expenses / maxVal) * 100, 1)}%` }} />
                       </div>
                       <span className="text-[10px] text-muted-foreground font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-full">{d.label}</span>
                     </div>
@@ -919,7 +919,7 @@ export default function ReportsPage() {
                 {prevMonthData.slice(-2).map((d, i) => (
                   <div key={i} className="rounded-lg bg-muted/50 p-2.5 text-center">
                     <span className="text-[10px] text-muted-foreground block">{d.label}</span>
-                    <p className={`text-sm font-bold tabular-nums ${d.income - d.expenses >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <p className={`text-sm font-bold tabular-nums ${d.income - d.expenses >= 0 ? 'text-success' : 'text-danger'}`}>
                       Neto: {formatCurrency(d.income - d.expenses)}
                     </p>
                   </div>
@@ -1004,11 +1004,11 @@ function AgingSummary({
         </div>
         <div className="rounded-lg bg-muted/50 p-2.5 text-center">
           <span className="text-[10px] text-muted-foreground uppercase block">{type === 'receivable' ? 'Cobrado' : 'Pagado'}</span>
-          <p className="text-sm font-bold tabular-nums text-emerald-600">{formatCurrency(totalPaid)}</p>
+          <p className="text-sm font-bold tabular-nums text-success">{formatCurrency(totalPaid)}</p>
         </div>
         <div className="rounded-lg bg-muted/50 p-2.5 text-center">
           <span className="text-[10px] text-muted-foreground uppercase block">Pendiente</span>
-          <p className="text-sm font-bold tabular-nums text-amber-600">{formatCurrency(totalBalance)}</p>
+          <p className="text-sm font-bold tabular-nums text-warning">{formatCurrency(totalBalance)}</p>
         </div>
       </div>
       <div className="space-y-2">
@@ -1026,7 +1026,7 @@ function AgingSummary({
           <span className="w-2 h-2 rounded-full shrink-0 bg-red-500" />
           <span className="text-[11px] font-medium text-muted-foreground w-24 shrink-0">Total vencido</span>
           <div className="flex-1" />
-          <span className="text-[11px] font-bold tabular-nums w-20 text-right text-red-600">{formatCurrency(overdue)}</span>
+          <span className="text-[11px] font-bold tabular-nums w-20 text-right text-danger">{formatCurrency(overdue)}</span>
         </div>
       </div>
     </div>
@@ -1076,14 +1076,14 @@ function MoneyByAccount({
             <p className="text-xs font-medium">{r.label}</p>
             <p className="text-[10px] text-muted-foreground">{r.sub}</p>
           </div>
-          <span className={`text-sm font-bold tabular-nums shrink-0 ${r.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <span className={`text-sm font-bold tabular-nums shrink-0 ${r.balance >= 0 ? 'text-success' : 'text-danger'}`}>
             {formatCurrency(r.balance)}
           </span>
         </div>
       ))}
       <div className="pt-2 border-t border-border flex items-center justify-between">
         <span className="text-xs font-semibold">Total disponible</span>
-        <span className={`text-sm font-bold tabular-nums ${total >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+        <span className={`text-sm font-bold tabular-nums ${total >= 0 ? 'text-success' : 'text-danger'}`}>
           {formatCurrency(total)}
         </span>
       </div>

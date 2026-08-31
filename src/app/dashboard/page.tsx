@@ -24,7 +24,7 @@ function TrendBadge({ value, inverted }: { value: number; inverted?: boolean }) 
   if (Math.abs(value) < 0.1) return null
   const positive = inverted ? value < 0 : value > 0
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full ${positive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+    <span className={`inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full ${positive ? 'bg-success/[0.08] text-success' : 'bg-danger/[0.08] text-danger'}`}>
       {positive ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
       {Math.abs(value).toFixed(1)}%
     </span>
@@ -42,16 +42,16 @@ function FlowChart({ data }: { data: { label: string; income: number; expenses: 
           <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
             <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-foreground text-white text-[10px] px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
               <div className="font-medium mb-0.5">{d.label}</div>
-              <div className="text-emerald-400 font-medium">+{formatCurrency(d.income)}</div>
-              <div className="text-red-400 font-medium">-{formatCurrency(d.expenses)}</div>
+              <div className="text-success font-medium">+{formatCurrency(d.income)}</div>
+              <div className="text-danger font-medium">-{formatCurrency(d.expenses)}</div>
             </div>
             <div className="w-full flex gap-[3px] items-end" style={{ height: '100%' }}>
               <div
-                className="flex-1 rounded-[3px] bg-emerald-400/70 hover:bg-emerald-500 transition-colors duration-150 bar-chart-bar"
+                className="flex-1 rounded-[3px] bg-success/60 hover:bg-success/70 transition-colors duration-150 bar-chart-bar"
                 style={{ height: `${Math.max(incomeH, 1)}%` }}
               />
               <div
-                className="flex-1 rounded-[3px] bg-red-400/40 hover:bg-red-500/60 transition-colors duration-150 bar-chart-bar"
+                className="flex-1 rounded-[3px] bg-danger/50 hover:bg-danger/70 transition-colors duration-150 bar-chart-bar"
                 style={{ height: `${Math.max(expenseH, 1)}%` }}
               />
             </div>
@@ -70,7 +70,7 @@ function TimelineItem({ m }: {
   return (
     <div className="flex items-start gap-4 relative">
       <div className="flex flex-col items-center">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${isIn ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${isIn ? 'bg-success/[0.08] text-success' : 'bg-danger/[0.08] text-danger'}`}>
           {isIn ? <ArrowDownLeft size={14} strokeWidth={2} /> : <ArrowUpRight size={14} strokeWidth={2} />}
         </div>
         <div className="w-px flex-1 bg-border min-h-[20px]" />
@@ -80,7 +80,7 @@ function TimelineItem({ m }: {
           <p className="text-sm font-medium truncate">
             {m.description || movementTypeLabel(m.movementType)}
           </p>
-          <p className={`text-sm font-bold tabular-nums shrink-0 ${isIn ? 'text-emerald-600' : 'text-red-600'}`}>
+          <p className={`text-sm font-bold tabular-nums shrink-0 ${isIn ? 'text-success' : 'text-danger'}`}>
             {isIn ? '+' : '-'}{formatCurrency(Number(m.amount))}
           </p>
         </div>
@@ -248,33 +248,32 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Position Card ── */}
-      <div className="bg-white rounded-xl border border-border p-6 sm:p-8 relative overflow-hidden">
+      <div className="bg-card rounded-xl border border-border p-6 sm:p-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 rounded-full -translate-y-1/2 translate-x-1/2"
           style={{ background: 'radial-gradient(circle, rgba(184,134,11,0.06) 0%, transparent 70%)' }} />
         <div className="relative">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Posición neta</p>
           <div className="flex items-end gap-3 mt-2">
-            <p className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums"
-              style={{ color: data.totalAvailable >= 0 ? undefined : '#DC2626' }}>
+            <p className={`text-3xl sm:text-4xl font-bold tracking-tight tabular-nums${data.totalAvailable < 0 ? ' text-danger' : ''}`}>
               {formatCurrency(data.totalAvailable)}
             </p>
             <TrendBadge value={data.netTrend} />
           </div>
           <div className="flex items-center gap-6 mt-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-success" />
               <span className="text-xs text-muted-foreground">Caja {formatCurrency(data.totalCash)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+              <div className="w-1.5 h-1.5 rounded-full bg-blue" />
               <span className="text-xs text-muted-foreground">Bancos {formatCurrency(data.totalBank)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#B8860B' }} />
+              <div className="w-1.5 h-1.5 rounded-full bg-warning" />
               <span className="text-xs text-muted-foreground">CxC {formatCurrency(data.pendingAR)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-danger" />
               <span className="text-xs text-muted-foreground">Comprometido {formatCurrency(totalCommitments)}</span>
             </div>
           </div>
@@ -282,7 +281,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Flow Chart ── */}
-      <div className="bg-white rounded-xl border border-border p-6">
+      <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="font-semibold text-sm">Flujo últimos 7 días</h2>
@@ -290,10 +289,10 @@ export default async function DashboardPage() {
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400/70" />Ingresos
+              <span className="w-2 h-2 rounded-full bg-success/60" />Ingresos
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-red-400/40" />Gastos
+              <span className="w-2 h-2 rounded-full bg-danger/50" />Gastos
             </span>
           </div>
         </div>
@@ -304,43 +303,42 @@ export default async function DashboardPage() {
       <div>
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">Dónde está el dinero</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger">
-          <Link href="/cash" className="group bg-white rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
+          <Link href="/cash" className="group bg-card rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-medium text-muted-foreground">Caja</span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors duration-200">
-                <Wallet size={16} className="text-emerald-600" strokeWidth={1.8} />
+              <div className="w-9 h-9 rounded-xl bg-success/[0.08] flex items-center justify-center group-hover:bg-success/20 transition-colors duration-200">
+                <Wallet size={16} className="text-success" strokeWidth={1.8} />
               </div>
             </div>
             <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(data.totalCash)}</p>
           </Link>
 
-          <Link href="/banks" className="group bg-white rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
+          <Link href="/banks" className="group bg-card rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-medium text-muted-foreground">Bancos</span>
-              <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors duration-200">
-                <Building2 size={16} className="text-blue-600" strokeWidth={1.8} />
+              <div className="w-9 h-9 rounded-xl bg-blue/[0.08] flex items-center justify-center group-hover:bg-blue/20 transition-colors duration-200">
+                <Building2 size={16} className="text-blue" strokeWidth={1.8} />
               </div>
             </div>
             <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(data.totalBank)}</p>
           </Link>
 
-          <Link href="/receivables" className="group bg-white rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
+          <Link href="/receivables" className="group bg-card rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-medium text-muted-foreground">Por cobrar</span>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center group-hover:opacity-90 transition-colors duration-200"
-                style={{ backgroundColor: 'rgba(184,134,11,0.08)' }}>
-                <ArrowDownLeft size={16} style={{ color: '#B8860B' }} strokeWidth={1.8} />
+              <div className="w-9 h-9 rounded-xl bg-warning/[0.08] text-warning flex items-center justify-center group-hover:opacity-90 transition-colors duration-200">
+                <ArrowDownLeft size={16} strokeWidth={1.8} />
               </div>
             </div>
             <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(data.pendingAR)}</p>
             <p className="text-[11px] text-muted-foreground mt-1">{data.pendingARCount} documento{data.pendingARCount !== 1 ? 's' : ''}</p>
           </Link>
 
-          <Link href="/payables" className="group bg-white rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
+          <Link href="/payables" className="group bg-card rounded-xl border border-border p-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-medium text-muted-foreground">Comprometido</span>
-              <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center group-hover:bg-red-100 transition-colors duration-200">
-                <ArrowUpRight size={16} className="text-red-600" strokeWidth={1.8} />
+              <div className="w-9 h-9 rounded-xl bg-danger/[0.08] flex items-center justify-center group-hover:bg-danger/20 transition-colors duration-200">
+                <ArrowUpRight size={16} className="text-danger" strokeWidth={1.8} />
               </div>
             </div>
             <p className="text-xl font-bold tabular-nums tracking-tight">{formatCurrency(totalCommitments)}</p>
@@ -355,10 +353,10 @@ export default async function DashboardPage() {
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">Requiere atención</h2>
           <div className="space-y-2">
             {data.overdueAR.length > 0 && (
-              <Link href="/receivables" className="flex items-center justify-between bg-white rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
+              <Link href="/receivables" className="flex items-center justify-between bg-card rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
-                    <AlertTriangle size={16} className="text-red-600" />
+                  <div className="w-9 h-9 rounded-xl bg-danger/[0.08] flex items-center justify-center shrink-0">
+                    <AlertTriangle size={16} className="text-danger" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">CxC vencidas</p>
@@ -370,10 +368,10 @@ export default async function DashboardPage() {
             )}
 
             {data.overdueAP.length > 0 && (
-              <Link href="/payables" className="flex items-center justify-between bg-white rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
+              <Link href="/payables" className="flex items-center justify-between bg-card rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                    <AlertTriangle size={16} className="text-amber-600" />
+                  <div className="w-9 h-9 rounded-xl bg-warning/[0.08] flex items-center justify-center shrink-0">
+                    <AlertTriangle size={16} className="text-warning" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">CxP vencidas</p>
@@ -385,10 +383,10 @@ export default async function DashboardPage() {
             )}
 
             {data.upcomingObligations.length > 0 && (
-              <Link href="/obligations" className="flex items-center justify-between bg-white rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
+              <Link href="/obligations" className="flex items-center justify-between bg-card rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                    <Clock size={16} className="text-blue-600" />
+                  <div className="w-9 h-9 rounded-xl bg-blue/[0.08] flex items-center justify-center shrink-0">
+                    <Clock size={16} className="text-blue" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">Obligaciones próximas</p>
@@ -400,10 +398,10 @@ export default async function DashboardPage() {
             )}
 
             {data.pendingMovements > 0 && (
-              <Link href="/movements" className="flex items-center justify-between bg-white rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
+              <Link href="/movements" className="flex items-center justify-between bg-card rounded-xl border border-border p-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                    <Activity size={16} className="text-amber-600" />
+                  <div className="w-9 h-9 rounded-xl bg-warning/[0.08] flex items-center justify-center shrink-0">
+                    <Activity size={16} className="text-warning" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">Movimientos pendientes</p>
@@ -420,7 +418,7 @@ export default async function DashboardPage() {
       {/* ── Activity timeline ── */}
       <div>
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">Actividad reciente</h2>
-        <div className="bg-white rounded-xl border border-border p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           {data.last10Movements.length === 0 ? (
             <div className="text-center py-10">
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
@@ -434,7 +432,7 @@ export default async function DashboardPage() {
               {data.last10Movements.map((m) => (
                 <TimelineItem key={m.id} m={m} />
               ))}
-              <Link href="/movements" className="flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors pt-2">
+              <Link href="/movements" className="flex items-center justify-center gap-2 text-sm font-medium text-blue hover:text-blue/80 transition-colors pt-2">
                 Ver todos los movimientos
                 <ArrowRight size={14} />
               </Link>

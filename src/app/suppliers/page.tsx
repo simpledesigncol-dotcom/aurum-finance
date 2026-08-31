@@ -130,7 +130,7 @@ export default function SuppliersPage() {
       setModalOpen(false)
       fetchSuppliers()
     } catch {
-      setFormError('Error de conexion. Intente de nuevo.')
+      setFormError('Error de conexión. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -156,7 +156,7 @@ export default function SuppliersPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Proveedores</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Directorio de proveedores</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors">
+        <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
           <Plus size={14} strokeWidth={1.8} />
           Nuevo proveedor
         </button>
@@ -179,6 +179,8 @@ export default function SuppliersPage() {
 
       <div className="bg-card rounded-xl border border-border">
         <div className="px-5 py-3 border-b border-border flex items-center gap-3">
+          <h2 className="font-semibold text-sm">Proveedores</h2>
+          <span className="text-xs text-muted-foreground mr-auto">{filtered.length} registros</span>
           <div className="relative flex-1 w-full sm:max-w-xs">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
             <input
@@ -212,7 +214,7 @@ export default function SuppliersPage() {
           ) : (
             filtered.map((s) => (
               <div key={s.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors duration-150">
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
                   {s.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -266,14 +268,14 @@ export default function SuppliersPage() {
                   onChange={(e) => setForm({ ...form, documentType: e.target.value })}
                   className={inputClass}
                 >
-                  <option value="CC">Cedula de Ciudadania</option>
+                  <option value="CC">Cédula de Ciudadanía</option>
                   <option value="NIT">NIT</option>
-                  <option value="CE">Cedula Extranjeria</option>
+                  <option value="CE">Cédula de Extranjería</option>
                   <option value="TI">Tarjeta Identidad</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Numero documento</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Número documento</label>
                 <input
                   type="text"
                   value={form.documentNumber}
@@ -295,7 +297,7 @@ export default function SuppliersPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Telefono</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Teléfono</label>
                 <input
                   type="text"
                   value={form.phone}
@@ -306,13 +308,13 @@ export default function SuppliersPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Direccion</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Dirección</label>
               <input
                 type="text"
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 className={inputClass}
-                placeholder="Direccion del proveedor"
+                placeholder="Dirección del proveedor"
               />
             </div>
             <div>
@@ -342,7 +344,7 @@ export default function SuppliersPage() {
               <button
                 type="submit"
                 disabled={saving || !form.name.trim()}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue text-white hover:bg-blue/90 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
               </button>
@@ -354,7 +356,7 @@ export default function SuppliersPage() {
       {deleteTarget && (
         <ConfirmDialog
           title="Eliminar proveedor"
-          message={`¿Seguro que deseas eliminar a "${deleteTarget.name}"? Esta accion no se puede deshacer.`}
+          message={`¿Seguro que deseas eliminar a "${deleteTarget.name}"? Esta acción no se puede deshacer.`}
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}
         />

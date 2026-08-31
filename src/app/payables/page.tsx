@@ -238,7 +238,7 @@ export default function PayablesPage() {
       setModalOpen(false)
       fetchAccounts()
     } catch {
-      setFormError('Error de conexion. Intente de nuevo.')
+      setFormError('Error de conexión. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -313,7 +313,7 @@ export default function PayablesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Cuentas por Pagar</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Dinero que debes a proveedores</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors">
+        <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
           <Plus size={14} strokeWidth={1.8} />
           Nuevo pago
         </button>
@@ -368,13 +368,13 @@ export default function PayablesPage() {
                     <p className="text-xs text-muted-foreground">
                       {ap.contact?.name || 'Sin contacto'} · Vence: <span className={overdue ? 'text-danger font-medium' : ''}>{formatDate(ap.dueDate)}</span>
                       {ap.notes?.startsWith('[Archivo:') && (
-                        <span className="ml-2 text-[10px] text-blue">📁 {ap.notes.match(/^\[Archivo: (.+?)\]/)?.[1]}</span>
+                        <span className="ml-2 text-[10px] text-blue inline-flex items-center gap-1"><FileText size={10} /> {ap.notes.match(/^\[Archivo: (.+?)\]/)?.[1]}</span>
                       )}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-semibold tabular-nums">{formatCurrency(ap.balance)}</p>
-                    <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${STATUS_BADGE[display] || 'bg-muted text-muted-foreground'}`}>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[display] || 'bg-muted text-muted-foreground'}`}>
                       {overdue ? 'Vencida' : STATUS_LABELS[ap.status] || ap.status}
                     </span>
                   </div>
@@ -411,7 +411,7 @@ export default function PayablesPage() {
               <input type="text" value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} className={inputClass} placeholder="Nombre del proveedor" />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Descripcion *</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Descripción *</label>
               <input type="text" required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputClass} placeholder="Ej: Compra materiales" />
             </div>
             <div>
@@ -420,7 +420,7 @@ export default function PayablesPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Fecha emision *</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">Fecha emisión *</label>
                 <input type="date" required value={form.issueDate} onChange={(e) => setForm({ ...form, issueDate: e.target.value })} className={inputClass} />
               </div>
               <div>
@@ -463,7 +463,7 @@ export default function PayablesPage() {
                 Cancelar
               </button>
               {formError && (<p className="text-xs text-danger bg-danger/[0.04] border border-danger/10 rounded-lg px-3 py-2">{formError}</p>)}
-              <button type="submit" disabled={saving || uploadingFile || !form.description.trim() || !form.originalAmount || !form.issueDate || !form.dueDate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50">
+              <button type="submit" disabled={saving || uploadingFile || !form.description.trim() || !form.originalAmount || !form.issueDate || !form.dueDate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
                 {saving || uploadingFile ? <Loader2 size={12} className="animate-spin" /> : null}
                 {saving ? 'Guardando...' : uploadingFile ? 'Subiendo factura...' : editing ? 'Actualizar' : 'Crear'}
               </button>
@@ -530,7 +530,7 @@ export default function PayablesPage() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setPaymentModal(null)} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors">Cancelar</button>
-              <button type="submit" disabled={paying || !paymentForm.amount} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50">
+              <button type="submit" disabled={paying || !paymentForm.amount} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
                 {paying ? 'Registrando...' : 'Registrar abono'}
               </button>
             </div>
@@ -541,7 +541,7 @@ export default function PayablesPage() {
       {deleteTarget && (
         <ConfirmDialog
           title="Eliminar cuenta por pagar"
-          message={`¿Seguro que deseas eliminar "${deleteTarget.description}"? Se eliminaran ${deleteTarget.payments.length} pagos registrados. Esta accion no se puede deshacer.`}
+          message={`¿Seguro que deseas eliminar "${deleteTarget.description}"? Se eliminarán ${deleteTarget.payments.length} pagos registrados. Esta acción no se puede deshacer.`}
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}
         />

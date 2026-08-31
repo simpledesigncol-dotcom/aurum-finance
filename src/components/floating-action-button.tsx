@@ -62,7 +62,7 @@ export default function FloatingActionButton() {
         )}
         <button
           onClick={() => setOpen(!open)}
-          className="w-12 h-12 rounded-xl bg-blue text-white shadow-[0_4px_16px_rgba(37,99,235,0.25)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.35)] hover:scale-[1.03] active:scale-[0.97] transition-all duration-150 flex items-center justify-center"
+          className="w-12 h-12 rounded-xl bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(26,26,46,0.3)] hover:shadow-[0_6px_20px_rgba(26,26,46,0.4)] hover:scale-[1.03] active:scale-[0.97] transition-all duration-150 flex items-center justify-center"
           title="Acciones rápidas"
         >
           <Plus size={20} strokeWidth={2.2} className={`transition-transform duration-200 ${open ? 'rotate-45' : ''}`} />

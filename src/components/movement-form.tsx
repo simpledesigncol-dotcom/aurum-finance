@@ -255,7 +255,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold">Registrar movimiento</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Que paso?</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Qué pasó?</p>
               </div>
               <button
                 onClick={handleClose}
@@ -316,19 +316,19 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                   min="0"
                   step="100"
                   required
-                  className="w-full pl-7 pr-4 py-2.5 text-xl font-bold tabular-nums rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                  className="w-full pl-7 pr-4 py-2.5 text-xl font-bold tabular-nums rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Descripcion</label>
+              <label className="text-xs font-medium mb-1.5 block text-muted-foreground">Descripción</label>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => updateForm('description', e.target.value)}
                 placeholder={isTransfer ? 'Ej: Traslado a cuenta bancaria' : 'Ej: Lavado completo carro placa ABC123'}
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 placeholder:text-muted-foreground/50"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 placeholder:text-muted-foreground/50"
               />
             </div>
 
@@ -338,7 +338,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                 <select
                   value={form.workOrderId}
                   onChange={(e) => updateForm('workOrderId', e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                 >
                   <option value="">Sin OT</option>
                   {workOrders.map(wo => (
@@ -355,7 +355,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                   type="date"
                   value={form.movementDate}
                   onChange={(e) => updateForm('movementDate', e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                 />
               </div>
               {!isTransfer && (
@@ -364,7 +364,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                   <select
                     value={form.paymentType}
                     onChange={(e) => updateForm('paymentType', e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                   >
                     {PAYMENT_TYPES.map(pt => (
                       <option key={pt.id} value={pt.id}>{pt.icon} {pt.label}</option>
@@ -381,7 +381,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                   <select
                     value={fromAccount}
                     onChange={(e) => setFromAccount(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                   >
                     <option value="">Origen...</option>
                     {allOptions.map(o => (
@@ -394,7 +394,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                   <select
                     value={toAccount}
                     onChange={(e) => setToAccount(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
                   >
                     <option value="">Destino...</option>
                     {allOptions.map(o => (
@@ -437,7 +437,7 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                   value={form.contactName}
                   onChange={(e) => updateForm('contactName', e.target.value)}
                   placeholder="Nombre del contacto"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 placeholder:text-muted-foreground/50"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 placeholder:text-muted-foreground/50"
                 />
               </div>
             )}
@@ -449,14 +449,14 @@ export default function MovementForm({ onClose, registerId }: MovementFormProps)
                 onChange={(e) => updateForm('notes', e.target.value)}
                 placeholder="Detalles adicionales..."
                 rows={2}
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 resize-none placeholder:text-muted-foreground/50"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150 resize-none placeholder:text-muted-foreground/50"
               />
             </div>
 
             <button
               type="submit"
               disabled={isPending || !canSubmit()}
-              className="w-full py-2.5 rounded-xl bg-blue text-white font-medium text-sm hover:bg-blue/90 transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+              className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
             >
               {isPending ? (
                 <>

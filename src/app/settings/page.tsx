@@ -117,7 +117,7 @@ export default function SettingsPage() {
       setCompanySaved(true)
       setTimeout(() => setCompanySaved(false), 3000)
     } catch {
-      setFormError('Error de conexion. Intente de nuevo.')
+      setFormError('Error de conexión. Intente de nuevo.')
     } finally {
       setSavingCompany(false)
     }
@@ -144,7 +144,7 @@ export default function SettingsPage() {
       setCatModalOpen(false)
       setCatForm({ name: '', type: 'expense', icon: '', color: '' })
     } catch {
-      setFormError('Error de conexion. Intente de nuevo.')
+      setFormError('Error de conexión. Intente de nuevo.')
     } finally {
       setSavingCat(false)
     }
@@ -182,7 +182,7 @@ export default function SettingsPage() {
       setPmModalOpen(false)
       setPmForm({ name: '', type: 'cash' })
     } catch {
-      setFormError('Error de conexion. Intente de nuevo.')
+      setFormError('Error de conexión. Intente de nuevo.')
     } finally {
       setSavingPm(false)
     }
@@ -317,7 +317,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={savingCompany || !companyForm.name}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {savingCompany ? <Loader2 size={13} className="animate-spin" /> : null}
                 Guardar
@@ -338,7 +338,7 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={() => { setCatForm({ name: '', type: 'expense', icon: '', color: '' }); setFormError(''); setCatModalOpen(true) }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
               >
                 <Plus size={13} />
                 Nueva categoría
@@ -386,7 +386,7 @@ export default function SettingsPage() {
                       <p className="text-sm font-medium truncate">{cat.name}</p>
                       <p className="text-xs text-muted-foreground">Orden: {cat.sortOrder}</p>
                     </div>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground shrink-0">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground shrink-0">
                       {categoryTypes.find(ct => ct.id === cat.type)?.label || cat.type}
                     </span>
                     <button
@@ -413,7 +413,7 @@ export default function SettingsPage() {
             </div>
               <button
                 onClick={() => { setPmForm({ name: '', type: 'cash' }); setFormError(''); setPmModalOpen(true) }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
             >
               <Plus size={13} />
               Nuevo método
@@ -438,7 +438,7 @@ export default function SettingsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{pm.name}</p>
                   </div>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground shrink-0">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground shrink-0">
                     {paymentTypeOptions.find(pt => pt.id === pm.type)?.label || pm.type}
                   </span>
                   <button
@@ -516,7 +516,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={savingCat || !catForm.name}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {savingCat ? <Loader2 size={13} className="animate-spin" /> : null}
                 Crear
@@ -566,7 +566,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={savingPm || !pmForm.name}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {savingPm ? <Loader2 size={13} className="animate-spin" /> : null}
                 Crear

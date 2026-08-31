@@ -18,6 +18,7 @@ interface CashRegisterData {
   physicalCount: number | null
   difference: number | null
   balance: number
+  today?: { income: number; expenses: number }
 }
 
 interface Movement {
@@ -78,25 +79,6 @@ export default function CashPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const getTodayStats = (registerId: string) => {
-    const todayMovements = movements.filter((m) => {
-      if (m.sourceId !== registerId) return false
-      const d = new Date(m.movementDate)
-      d.setHours(0, 0, 0, 0)
-      return d.getTime() === today.getTime()
-    })
-    const income = todayMovements
-      .filter((m) => m.direction === 'in')
-      .reduce((s, m) => s + m.amount, 0)
-    const expenses = todayMovements
-      .filter((m) => m.direction === 'out')
-      .reduce((s, m) => s + m.amount, 0)
-    return { income, expenses, net: income - expenses }
-  }
-
   const getRecentMovements = (registerId: string, limit = 3) => {
     return movements.filter((m) => m.sourceId === registerId).slice(0, limit)
   }
@@ -152,8 +134,12 @@ export default function CashPage() {
     )
   }
 
-  const generalStats = general ? getTodayStats(general.id) : { income: 0, expenses: 0, net: 0 }
-  const minorStats = minor ? getTodayStats(minor.id) : { income: 0, expenses: 0, net: 0 }
+  const generalStats = general
+    ? { ...(general.today || { income: 0, expenses: 0 }), net: (general.today?.income || 0) - (general.today?.expenses || 0) }
+    : { income: 0, expenses: 0, net: 0 }
+  const minorStats = minor
+    ? { ...(minor.today || { income: 0, expenses: 0 }), net: (minor.today?.income || 0) - (minor.today?.expenses || 0) }
+    : { income: 0, expenses: 0, net: 0 }
   const generalRecent = general ? getRecentMovements(general.id) : []
   const minorRecent = minor ? getRecentMovements(minor.id) : []
   const minorDifference = minor && physicalCount
@@ -182,8 +168,8 @@ export default function CashPage() {
                 <p className="text-xs text-muted-foreground">Balance inicial: {formatCurrency(general?.openingBalance || 0)}</p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-success/[0.08] text-success">
+              <span className="w-1.5 h-1.5 rounded-full bg-success" />
               {general?.status === 'open' ? 'Abierta' : 'Cerrada'}
             </span>
           </div>
@@ -193,21 +179,21 @@ export default function CashPage() {
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="rounded-lg bg-muted/50 p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
-                <TrendingUp size={12} className="text-emerald-600" />
+                <TrendingUp size={12} className="text-success" />
                 <span className="text-[10px] font-medium text-muted-foreground uppercase">Ingresos</span>
               </div>
-              <p className="text-sm font-semibold tabular-nums text-emerald-600">{formatCurrency(generalStats.income)}</p>
+              <p className="text-sm font-semibold tabular-nums text-success">{formatCurrency(generalStats.income)}</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
-                <TrendingDown size={12} className="text-red-600" />
+                <TrendingDown size={12} className="text-danger" />
                 <span className="text-[10px] font-medium text-muted-foreground uppercase">Gastos</span>
               </div>
-              <p className="text-sm font-semibold tabular-nums text-red-600">{formatCurrency(generalStats.expenses)}</p>
+              <p className="text-sm font-semibold tabular-nums text-danger">{formatCurrency(generalStats.expenses)}</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-2.5">
               <span className="text-[10px] font-medium text-muted-foreground uppercase block mb-1">Neto</span>
-              <p className={`text-sm font-semibold tabular-nums ${generalStats.net >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <p className={`text-sm font-semibold tabular-nums ${generalStats.net >= 0 ? 'text-success' : 'text-danger'}`}>
                 {formatCurrency(generalStats.net)}
               </p>
             </div>
@@ -218,14 +204,14 @@ export default function CashPage() {
               <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1.5">Últimos movimientos</p>
               {generalRecent.map((m) => (
                 <div key={m.id} className="flex items-center gap-2.5 py-2 first:pt-0 last:pb-0">
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${m.direction === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${m.direction === 'in' ? 'bg-success/[0.08] text-success' : 'bg-danger/[0.08] text-danger'}`}>
                     {m.direction === 'in' ? <ArrowDownLeft size={12} strokeWidth={2} /> : <ArrowUpRight size={12} strokeWidth={2} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{m.description || movementTypeLabel(m.movementType)}</p>
                     <p className="text-[10px] text-muted-foreground">{formatShortDate(m.movementDate)}</p>
                   </div>
-                  <span className={`text-xs font-semibold tabular-nums shrink-0 ${m.direction === 'in' ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <span className={`text-xs font-semibold tabular-nums shrink-0 ${m.direction === 'in' ? 'text-success' : 'text-danger'}`}>
                     {m.direction === 'in' ? '+' : '-'}{formatCurrency(m.amount)}
                   </span>
                 </div>
@@ -237,16 +223,16 @@ export default function CashPage() {
         <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/[0.08] flex items-center justify-center">
-                <Wallet size={16} className="text-amber-600" />
+              <div className="w-9 h-9 rounded-lg bg-warning/[0.08] flex items-center justify-center">
+                <Wallet size={16} className="text-warning" />
               </div>
               <div>
                 <h2 className="text-sm font-semibold">{minor?.name || 'Caja Menor'}</h2>
                 <p className="text-xs text-muted-foreground">Balance inicial: {formatCurrency(minor?.openingBalance || 0)}</p>
               </div>
             </div>
-            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${minor?.status === 'open' ? 'bg-emerald-50 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${minor?.status === 'open' ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${minor?.status === 'open' ? 'bg-success/[0.08] text-success' : 'bg-muted text-muted-foreground'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${minor?.status === 'open' ? 'bg-success' : 'bg-muted-foreground'}`} />
               {minor?.status === 'open' ? 'Abierta' : 'Cerrada'}
             </span>
           </div>
@@ -256,21 +242,21 @@ export default function CashPage() {
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="rounded-lg bg-muted/50 p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
-                <TrendingUp size={12} className="text-emerald-600" />
+                <TrendingUp size={12} className="text-success" />
                 <span className="text-[10px] font-medium text-muted-foreground uppercase">Ingresos</span>
               </div>
-              <p className="text-sm font-semibold tabular-nums text-emerald-600">{formatCurrency(minorStats.income)}</p>
+              <p className="text-sm font-semibold tabular-nums text-success">{formatCurrency(minorStats.income)}</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
-                <TrendingDown size={12} className="text-red-600" />
+                <TrendingDown size={12} className="text-danger" />
                 <span className="text-[10px] font-medium text-muted-foreground uppercase">Gastos</span>
               </div>
-              <p className="text-sm font-semibold tabular-nums text-red-600">{formatCurrency(minorStats.expenses)}</p>
+              <p className="text-sm font-semibold tabular-nums text-danger">{formatCurrency(minorStats.expenses)}</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-2.5">
               <span className="text-[10px] font-medium text-muted-foreground uppercase block mb-1">Neto</span>
-              <p className={`text-sm font-semibold tabular-nums ${minorStats.net >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <p className={`text-sm font-semibold tabular-nums ${minorStats.net >= 0 ? 'text-success' : 'text-danger'}`}>
                 {formatCurrency(minorStats.net)}
               </p>
             </div>
@@ -281,14 +267,14 @@ export default function CashPage() {
               <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1.5">Últimos movimientos</p>
               {minorRecent.map((m) => (
                 <div key={m.id} className="flex items-center gap-2.5 py-2 first:pt-0 last:pb-0">
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${m.direction === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${m.direction === 'in' ? 'bg-success/[0.08] text-success' : 'bg-danger/[0.08] text-danger'}`}>
                     {m.direction === 'in' ? <ArrowDownLeft size={12} strokeWidth={2} /> : <ArrowUpRight size={12} strokeWidth={2} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{m.description || movementTypeLabel(m.movementType)}</p>
                     <p className="text-[10px] text-muted-foreground">{formatShortDate(m.movementDate)}</p>
                   </div>
-                  <span className={`text-xs font-semibold tabular-nums shrink-0 ${m.direction === 'in' ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <span className={`text-xs font-semibold tabular-nums shrink-0 ${m.direction === 'in' ? 'text-success' : 'text-danger'}`}>
                     {m.direction === 'in' ? '+' : '-'}{formatCurrency(m.amount)}
                   </span>
                 </div>
@@ -299,7 +285,7 @@ export default function CashPage() {
           {minor && (
             <div className="border border-border rounded-lg p-3.5 bg-muted/30">
               <div className="flex items-center gap-2 mb-3">
-                <Calculator size={14} className="text-amber-600" />
+                <Calculator size={14} className="text-warning" />
                 <span className="text-xs font-semibold">Arqueo de caja</span>
               </div>
               <div className="grid grid-cols-3 gap-2 mb-3">
@@ -316,15 +302,15 @@ export default function CashPage() {
                     placeholder="0"
                     min="0"
                     step="100"
-                    className="w-full px-2 py-1 text-sm font-semibold tabular-nums rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/40 transition-all"
+                    className="w-full px-2 py-1 text-sm font-semibold tabular-nums rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all"
                   />
                 </div>
                 <div>
                   <span className="text-[10px] text-muted-foreground block mb-0.5">Diferencia</span>
                   <p className={`text-sm font-bold tabular-nums ${minorDifference !== null
                     ? minorDifference === 0
-                      ? 'text-emerald-600'
-                      : 'text-red-600'
+                      ? 'text-success'
+                      : 'text-danger'
                     : 'text-muted-foreground'
                   }`}>
                     {minorDifference !== null ? formatCurrency(minorDifference) : '—'}
@@ -336,12 +322,12 @@ export default function CashPage() {
                 value={arqueoNotes}
                 onChange={(e) => setArqueoNotes(e.target.value)}
                 placeholder="Notas del arqueo (opcional)"
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-card mb-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all placeholder:text-muted-foreground/50"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-card mb-2.5 focus:outline-none focus:ring-2 focus:ring-blue/20 transition-all placeholder:text-muted-foreground/50"
               />
               <button
                 onClick={handleArqueo}
                 disabled={isPending || !physicalCount}
-                className="w-full py-2 rounded-lg bg-amber-600 text-white text-xs font-medium hover:bg-amber-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
               >
                 {isPending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                 Registrar arqueo
@@ -360,7 +346,7 @@ export default function CashPage() {
                       Sistema: {formatCurrency(r.systemBalance)} · Contado: {formatCurrency(r.physicalCount)}
                     </p>
                   </div>
-                  <span className={`text-xs font-semibold tabular-nums ${r.difference === 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <span className={`text-xs font-semibold tabular-nums ${r.difference === 0 ? 'text-success' : 'text-danger'}`}>
                     {r.difference === 0 ? 'Cuadra' : formatCurrency(r.difference)}
                   </span>
                 </div>
@@ -394,7 +380,7 @@ export default function CashPage() {
                     : null
               return (
                 <div key={m.id} className="px-5 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors duration-150">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${m.direction === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${m.direction === 'in' ? 'bg-success/[0.08] text-success' : 'bg-danger/[0.08] text-danger'}`}>
                     {m.direction === 'in' ? <ArrowDownLeft size={14} strokeWidth={1.8} /> : <ArrowUpRight size={14} strokeWidth={1.8} />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -408,7 +394,7 @@ export default function CashPage() {
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-semibold tabular-nums ${m.direction === 'in' ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <p className={`text-sm font-semibold tabular-nums ${m.direction === 'in' ? 'text-success' : 'text-danger'}`}>
                       {m.direction === 'in' ? '+' : '-'}{formatCurrency(m.amount)}
                     </p>
                     <p className="text-xs text-muted-foreground">

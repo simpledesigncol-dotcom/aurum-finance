@@ -159,7 +159,7 @@ export default function SalesPage() {
       setModalOpen(false)
       fetchSales()
     } catch {
-      setFormError('Error de conexion. Intente de nuevo.')
+      setFormError('Error de conexión. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -197,7 +197,7 @@ export default function SalesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Ventas</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Registro de servicios y ventas</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-1.5 bg-blue text-white text-xs font-medium rounded-lg px-3 py-1.5 hover:bg-blue/90 transition-colors">
+        <button onClick={openCreate} className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors">
           <Plus size={14} strokeWidth={1.8} />
           Nueva venta
         </button>
@@ -434,7 +434,7 @@ export default function SalesPage() {
               <button
                 type="submit"
                 disabled={saving || form.items.every(i => !i.serviceName.trim())}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue text-white hover:bg-blue/90 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
               </button>
@@ -446,7 +446,7 @@ export default function SalesPage() {
       {deleteTarget && (
         <ConfirmDialog
           title="Eliminar venta"
-          message={`¿Seguro que deseas eliminar esta venta de ${formatCurrency(deleteTarget.total)}? Esta accion no se puede deshacer.`}
+          message={`¿Seguro que deseas eliminar esta venta de ${formatCurrency(deleteTarget.total)}? Esta acción no se puede deshacer.`}
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}
         />

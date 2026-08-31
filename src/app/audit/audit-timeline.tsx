@@ -67,14 +67,14 @@ const MOVEMENT_LABELS: Record<string, string> = {
 }
 
 const ACTION_COLORS: Record<string, { dot: string; bg: string; text: string }> = {
-  create: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600' },
-  update: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-600' },
-  delete: { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-600' },
+  create: { dot: 'bg-success', bg: 'bg-success/[0.08]', text: 'text-success' },
+  update: { dot: 'bg-warning', bg: 'bg-warning/[0.08]', text: 'text-warning' },
+  delete: { dot: 'bg-danger', bg: 'bg-danger/[0.08]', text: 'text-danger' },
 }
 
 const DIRECTION_COLORS: Record<string, { dot: string; bg: string; text: string }> = {
-  in: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600' },
-  out: { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-600' },
+  in: { dot: 'bg-success', bg: 'bg-success/[0.08]', text: 'text-success' },
+  out: { dot: 'bg-danger', bg: 'bg-danger/[0.08]', text: 'text-danger' },
 }
 
 const ENTITY_FILTERS = [
@@ -282,7 +282,7 @@ export default function AuditTimeline({ logs, users }: { logs: AuditLogData[]; u
     <div className="space-y-5">
 
       {/* ── Filters ── */}
-      <div className="bg-white rounded-xl border border-border p-4 space-y-3">
+      <div className="bg-card rounded-xl border border-border p-4 space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-medium text-muted-foreground mr-1">Entidad:</span>
           {ENTITY_FILTERS.map(f => (
@@ -337,7 +337,7 @@ export default function AuditTimeline({ logs, users }: { logs: AuditLogData[]; u
 
       {/* ── Timeline ── */}
       {grouped.length === 0 ? (
-        <div className="bg-white rounded-xl border border-border p-12 text-center">
+        <div className="bg-card rounded-xl border border-border p-12 text-center">
           <p className="text-sm font-medium text-muted-foreground">No hay registros con estos filtros</p>
         </div>
       ) : (
@@ -369,12 +369,12 @@ export default function AuditTimeline({ logs, users }: { logs: AuditLogData[]; u
                   return (
                     <div key={log.id} className="relative group">
                       {/* Dot on the line */}
-                      <div className={`absolute -left-[31px] top-3.5 w-[10px] h-[10px] rounded-full border-2 border-white ${colors.dot} z-10`} />
+                      <div className={`absolute -left-[31px] top-3.5 w-[10px] h-[10px] rounded-full border-2 border-card ${colors.dot} z-10`} />
 
                       {/* Card */}
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : log.id)}
-                        className="w-full text-left bg-white rounded-xl border border-border p-4 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200"
+                        className="w-full text-left bg-card rounded-xl border border-border p-4 hover:shadow-[0_1px_8px_rgba(0,0,0,0.04)] hover:border-border/80 transition-all duration-200"
                       >
                         <div className="flex items-start gap-3">
                           <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${colors.bg}`}>
@@ -418,10 +418,10 @@ export default function AuditTimeline({ logs, users }: { logs: AuditLogData[]; u
                                   <span key={i} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                                     {d.field}
                                     {d.from && d.to && (
-                                      <>: <span className="line-through text-red-500/70">{d.from}</span> <ArrowRight size={8} className="inline" /> <span className="text-emerald-600/80">{d.to}</span></>
+                                      <>: <span className="line-through text-danger/70">{d.from}</span> <ArrowRight size={8} className="inline" /> <span className="text-success/80">{d.to}</span></>
                                     )}
                                     {!d.from && d.to && (
-                                      <>: <span className="text-emerald-600/80">{d.to}</span></>
+                                      <>: <span className="text-success/80">{d.to}</span></>
                                     )}
                                   </span>
                                 ))}
@@ -476,12 +476,12 @@ export default function AuditTimeline({ logs, users }: { logs: AuditLogData[]; u
                                     <span className="text-muted-foreground min-w-[100px] shrink-0">{d.field}:</span>
                                     {d.from !== undefined && d.to !== undefined ? (
                                       <div className="flex items-center gap-1.5 flex-wrap">
-                                        <span className="bg-red-50 text-red-600 px-1.5 py-0.5 rounded line-through">{d.from}</span>
+                                        <span className="bg-danger/[0.08] text-danger px-1.5 py-0.5 rounded line-through">{d.from}</span>
                                         <ArrowRight size={10} className="text-muted-foreground/50 shrink-0" />
-                                        <span className="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-medium">{d.to}</span>
+<span className="bg-success/[0.08] text-success px-1.5 py-0.5 rounded font-medium">{d.to}</span>
                                       </div>
                                     ) : d.to ? (
-                                      <span className="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-medium">{d.to}</span>
+                                      <span className="bg-success/[0.08] text-success px-1.5 py-0.5 rounded font-medium">{d.to}</span>
                                     ) : (
                                       <span className="text-muted-foreground">—</span>
                                     )}

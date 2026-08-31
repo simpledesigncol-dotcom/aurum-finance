@@ -42,6 +42,7 @@ const emptyForm = {
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [allExpenses, setAllExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,18 +54,19 @@ export default function ExpensesPage() {
   const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null)
 
-  const fetchExpenses = useCallback(async (catId?: string) => {
+  const fetchExpenses = useCallback(async () => {
     try {
-      const url = catId ? `/api/expenses?categoryId=${catId}` : '/api/expenses'
-      const res = await fetch(url)
+      const res = await fetch('/api/expenses')
       const data = await res.json()
-      setExpenses(Array.isArray(data) ? data : [])
+      const list = Array.isArray(data) ? data : []
+      setAllExpenses(list)
+      setExpenses(filterCategory ? list.filter((e: Expense) => e.category?.id === filterCategory) : list)
     } catch {
       console.error('Error fetching expenses')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [filterCategory])
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -94,12 +96,11 @@ export default function ExpensesPage() {
 
   const handleCategoryFilter = (catId: string) => {
     setFilterCategory(catId)
-    fetchExpenses(catId || undefined)
   }
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
+  const totalExpenses = allExpenses.reduce((sum, e) => sum + e.amount, 0)
   const now = new Date()
-  const thisMonth = expenses.filter(e => {
+  const thisMonth = allExpenses.filter(e => {
     const d = new Date(e.expenseDate)
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   })
@@ -170,9 +171,9 @@ export default function ExpensesPage() {
         }
       }
       setModalOpen(false)
-      fetchExpenses(filterCategory || undefined)
+      fetchExpenses()
     } catch {
-      setFormError('Error de conexion. Intente de nuevo.')
+      setFormError('Error de conexión. Intente de nuevo.')
     } finally {
       setSaving(false)
     }
@@ -183,7 +184,7 @@ export default function ExpensesPage() {
     try {
       await fetch(`/api/expenses/${deleteTarget.id}`, { method: 'DELETE' })
       setDeleteTarget(null)
-      fetchExpenses(filterCategory || undefined)
+      fetchExpenses()
     } catch {
       console.error('Error deleting expense')
     }
@@ -198,7 +199,7 @@ export default function ExpensesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Gastos</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Control de gastos operativos</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-1.5 bg-blue text-white text-xs font-medium rounded-lg px-3 py-1.5 hover:bg-blue/90 transition-colors">
+        <button onClick={openCreate} className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors">
           <Plus size={14} strokeWidth={1.8} />
           Nuevo gasto
         </button>
@@ -215,18 +216,20 @@ export default function ExpensesPage() {
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Registros</span>
-          <p className="text-xl font-bold tabular-nums mt-2 tracking-tight">{expenses.length}</p>
+          <p className="text-xl font-bold tabular-nums mt-2 tracking-tight">{allExpenses.length}</p>
         </div>
       </div>
 
       <div className="bg-card rounded-xl border border-border">
         <div className="px-5 py-3 border-b border-border flex flex-wrap items-center gap-3">
+          <h2 className="font-semibold text-sm">Gastos registrados</h2>
+          <span className="text-xs text-muted-foreground mr-auto">{allExpenses.length} registros</span>
           <select
             value={filterCategory}
             onChange={(e) => handleCategoryFilter(e.target.value)}
             className="w-full max-w-xs px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue/40 transition-all duration-150"
           >
-            <option value="">Todas las categorias</option>
+            <option value="">Todas las categorías</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
@@ -259,7 +262,7 @@ export default function ExpensesPage() {
                     {expense.description || expense.category?.name || 'Gasto'}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {expense.category?.name || 'Sin categoria'}
+                    {expense.category?.name || 'Sin categoría'}
                     {expense.paymentMethod && ` · ${expense.paymentMethod.name}`}
                   </p>
                 </div>
@@ -316,37 +319,37 @@ export default function ExpensesPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Descripcion</label>
+              <label className="text-xs font-medium text-muted-foreground">Descripción</label>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className={inputClass}
-                placeholder="Descripcion del gasto"
+                placeholder="Descripción del gasto"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Categoria</label>
+                <label className="text-xs font-medium text-muted-foreground">Categoría</label>
                 <select
                   value={form.categoryId}
                   onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
                   className={inputClass}
                 >
-                  <option value="">Sin categoria</option>
+                  <option value="">Sin categoría</option>
                   {categories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Metodo de pago</label>
+                <label className="text-xs font-medium text-muted-foreground">Método de pago</label>
                 <select
                   value={form.paymentMethodId}
                   onChange={(e) => setForm({ ...form, paymentMethodId: e.target.value })}
                   className={inputClass}
                 >
-                  <option value="">Sin metodo</option>
+                  <option value="">Sin método</option>
                   {paymentMethods.map(pm => (
                     <option key={pm.id} value={pm.id}>{pm.name}</option>
                   ))}
@@ -371,7 +374,7 @@ export default function ExpensesPage() {
                   value={form.receiptNumber}
                   onChange={(e) => setForm({ ...form, receiptNumber: e.target.value })}
                   className={inputClass}
-                  placeholder="Numero de recibo"
+                  placeholder="Número de recibo"
                 />
               </div>
             </div>
@@ -392,7 +395,7 @@ export default function ExpensesPage() {
               <button
                 type="submit"
                 disabled={saving || !form.amount || !form.expenseDate}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue text-white hover:bg-blue/90 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
               </button>
@@ -404,7 +407,7 @@ export default function ExpensesPage() {
       {deleteTarget && (
         <ConfirmDialog
           title="Eliminar gasto"
-          message={`¿Seguro que deseas eliminar este gasto de ${formatCurrency(deleteTarget.amount)}? Esta accion no se puede deshacer.`}
+          message={`¿Seguro que deseas eliminar este gasto de ${formatCurrency(deleteTarget.amount)}? Esta acción no se puede deshacer.`}
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}
         />

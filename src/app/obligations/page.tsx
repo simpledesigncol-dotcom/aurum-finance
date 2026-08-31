@@ -85,11 +85,11 @@ interface BankAccount {
 const TYPE_COLOR_MAP: Record<string, string> = {
   blue: 'bg-blue/[0.08] text-blue',
   warning: 'bg-warning/[0.08] text-warning',
-  info: 'bg-info/[0.08] text-blue',
+  info: 'bg-blue/[0.08] text-blue',
   muted: 'bg-muted text-muted-foreground',
   success: 'bg-success/[0.08] text-success',
   danger: 'bg-danger/[0.08] text-danger',
-  purple: 'bg-purple/[0.08] text-purple',
+  purple: 'bg-blue/[0.08] text-blue',
 }
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -130,7 +130,7 @@ const STATUS_STYLES: Record<string, string> = {
   paid: 'bg-success/[0.08] text-success',
   overdue: 'bg-danger/[0.08] text-danger',
   cancelled: 'bg-muted text-muted-foreground',
-  upcoming: 'bg-info/[0.08] text-blue',
+  upcoming: 'bg-blue/[0.08] text-blue',
   due_today: 'bg-warning/[0.08] text-warning',
 }
 
@@ -410,7 +410,7 @@ export default function ObligationsPage() {
   const labelClass = 'text-xs font-medium text-muted-foreground'
   const cardClass = 'bg-card rounded-xl border border-border p-4'
   const primaryBtnClass =
-    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue text-white text-xs font-medium hover:bg-blue/90 transition-colors'
+    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors'
 
   return (
     <div className="p-5 sm:p-8 max-w-[1400px] mx-auto space-y-5 animate-fade-in">
@@ -491,6 +491,7 @@ export default function ObligationsPage() {
 
       <div className="bg-card rounded-xl border border-border">
         <div className="px-5 py-3.5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="font-semibold text-sm">Obligaciones</h2>
           <div className="flex items-center gap-1 flex-wrap">
             {FILTER_TABS.map((tab) => (
               <button
@@ -560,14 +561,14 @@ export default function ObligationsPage() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium truncate">{o.name}</p>
                       <span
-                        className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
                           TYPE_COLOR_MAP[typeInfo?.color || 'muted'] || 'bg-muted text-muted-foreground'
                         }`}
                       >
                         {typeInfo?.label || o.type}
                       </span>
                       <span
-                        className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
                           PRIORITY_STYLES[o.priority] || 'bg-muted text-muted-foreground'
                         }`}
                       >
@@ -595,7 +596,7 @@ export default function ObligationsPage() {
                   <div className="text-right shrink-0">
                     <p className="text-sm font-semibold tabular-nums">{formatCurrency(o.balance)}</p>
                     <span
-                      className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                         STATUS_STYLES[computed] || 'bg-muted text-muted-foreground'
                       }`}
                     >
